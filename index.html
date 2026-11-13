@@ -201,7 +201,27 @@ const T=[
  {id:'audit',rk:[1,5],cond:s=>s.sus>=40,t:'The Inquisitor\'s Audit',x:'An Inquisitor in grey has asked for your logs, your crew manifest, and an hour of your time.',ch:[
    {t:'Make a gift to her office',cost:1.5,out:{x:'She finds everything in order.',rw:{c:-1.5,s:-22}}},
    {t:'Scrub the logs first',check:{role:'engineer',mod:1},pass:{x:'The logs are spotless. She is almost disappointed.',rw:{s:-28}},fail:{x:'She finds the edit marks.',rw:{s:12}}},
-   {t:'Sit through it',out:{x:'A long hour. She leaves with nothing certain.',rw:{s:-6,r:-.3}}}]}];
+   {t:'Sit through it',out:{x:'A long hour. She leaves with nothing certain.',rw:{s:-6,r:-.3}}}]},
+ {id:'stowaway',rk:[0,1],t:'The Stowaway',x:'A girl, no older than twelve, has been living in the cargo hold for a week, eating ration paste and reading your flight manuals by torchlight. The manifest says the hold is empty.',ch:[
+   {t:'Turn her in',out:{x:'The stewards take her below. Your record gains a note for vigilance.',rw:{r:1.2,e:-8}}},
+   {t:'Look the other way',out:{x:'You weld the crate shut from the outside and say nothing. That night someone scratches a small flame onto a pipe near your bunk.',rw:{e:8,s:4}}},
+   {t:'Put her to work',out:{x:'She sweeps the hangar and learns the ship faster than your ensigns. The crew starts calling her the little shadow.',rw:{e:12,s:6,r:.4}}}]},
+ {id:'honor',rk:[1,3],t:'A Duel of Honor',x:'Lieutenant Corvin Dray has decided you insulted his house at the officers\' mess. He wants satisfaction, ship to ship, with the whole wardroom watching.',ch:[
+   {t:'Give him his duel',fight:{n:'Dray\'s corvette',mod:0,kind:'duel',rw:{c:1.4,r:1.6},x:'Dray\'s ship drifts, dark. The wardroom is very quiet, then very loud.'}},
+   {t:'Apologize and walk away',out:{x:'You apologize for a slight you did not commit. Dray tells the story at every table in the sector.',rw:{r:-.4}}},
+   {t:'Have a marine answer for you',check:{role:'marine',mod:0},pass:{x:'Your marine takes the duel in your name and wins it clean. Dray cannot complain — the forms were followed.',rw:{r:1.2,c:.5}},fail:{x:'Your marine loses badly. Dray accepts your apology with a smile that is worse than the duel.',rw:{r:-.2}}}]},
+ {id:'sealedmine',rk:[2,4],t:'The Sealed Mine',x:'Deepwell Mine has been sealed from above. The overseers call it a cave-in. The miners\' band calls it a punishment, and says two hundred Cinders are still below.',ch:[
+   {t:'Break the seal',out:{x:'You order the seal cut and haul the miners out yourself. Strike command is furious. The deeps remember.',rw:{e:18,s:14,r:-.5}}},
+   {t:'Follow orders and move on',out:{x:'You log the mine as lost and fly on. Your record stays clean.',rw:{r:1,e:-10}}},
+   {t:'Bribe the overseer',cost:1,out:{x:'Credits change hands and the seal opens quietly in the night. Nobody asks who paid.',rw:{c:-1,e:10,s:5}}}]},
+ {id:'ghostsignal',rk:[1,4],t:'The Ghost Signal',x:'A repeating signal is coming from the wreck belt: three tones, a pause, three tones. The registry says the ship that sent it has been dead for a century.',ch:[
+   {t:'Fly in and investigate',fight:{n:'Wreck belt ambush',mod:0,kind:'skirmish',rw:{c:1.2,r:1},x:'Raiders were using the old signal as bait. You spring the trap and take the wreck\'s vault for your trouble.'}},
+   {t:'Log it and move on',out:{x:'You log the signal and fly on. It follows you on the band for an hour, then stops.',rw:{r:.2}}},
+   {t:'Answer it',out:{x:'You answer the three tones with three of your own. The signal stops. An hour later a tight-beam message arrives: a set of coordinates, and a single word — thanks.',rw:{e:10,s:6}}}]},
+ {id:'books',rk:[2,5],t:'The Quartermaster\'s Books',x:'The quartermaster\'s books do not add up. Rations, med-gel and spare parts are walking out of the stores, and the manifests are too clean to be honest.',ch:[
+   {t:'Expose him',out:{x:'You lay the books before the board. He is dismissed in disgrace, and the officers who liked him do not forget your name.',rw:{r:1.4,s:4}}},
+   {t:'Take a cut',out:{x:'A share of the skim finds its way to your own stores. The quartermaster smiles at you now, like a man with a secret to keep.',rw:{c:1.2,s:8}}},
+   {t:'Fix the books quietly',check:{role:'engineer',mod:1},pass:{x:'You rebuild the manifests so the gaps close and the skimming stops. No one is punished, and no one is robbed again.',rw:{r:1,e:6}},fail:{x:'Your tampering is spotted. The quartermaster quietly undoes it and adds your name to a list.',rw:{s:8}}}]}];
 
 /* ============ STATE ============ */
 const R=(a,b)=>a+Math.random()*(b-a),RI=(a,b)=>Math.floor(R(a,b+1)),pick=a=>a[Math.floor(Math.random()*a.length)];
