@@ -298,7 +298,7 @@ const Game=(()=>{
   function start(){
     cv=$('cv');cx=cv.getContext('2d');bind();const h=NP(0);
     g={t:0,st:null,foes:[],shots:[],fx:[],parts:[],pods:[],xrocks:[],rk:[],conv:null,enc:null,raid:null,deck:null,garr:{},toasts:[],comms:null,banner:'',bannerT:0,shake:0,boardT:0,can:null,act:'',dockN:-1,thr:0,
-      payT:0,roamT:14,offerT:9,warnT:0,dead:0,fightT:-9,
+      payT:0,roamT:14,wreckT:12,wrecks:[],offerT:9,warnT:0,dead:0,fightT:-9,
       p:{x:h.x,y:h.y+190,vx:0,vy:0,ang:-1.57,hp:1,maxHp:1,sh:0,maxSh:0,shD:0,dashCd:0,dashT:0,dvx:0,dvy:0,cds:[],r:20,rockCd:0,flash:0}};
     refit();
     if(!S.tut){for(let i=0;i<3;i++){const e=foe('f',0,h.x-150+i*150,h.y-260,'tut');e.drone=true;e.dmg=1;e.hp=e.maxHp=14;e.spd=60;g.foes.push(e)}
@@ -448,8 +448,14 @@ const Game=(()=>{
       if(!r.on){r.t-=dt;if(D(p,n)<950){r.on=true;banner('Defend '+NODES[r.i].n,3);const t=NODES[r.i].t;spawn([...rep('f',Math.min(7,2+t)),...rep('g',Math.min(4,Math.floor(t/2)))],t,n.x,n.y,'raid',420,640)}
         else if(r.t<=0){S.own[r.i]=r.by;g.raid=null;report(NODES[r.i].n+' lost',HOUSES[r.by].n+' raises its banner over the system.')}}
       else if(!g.foes.some(e=>e.grp==='raid')){g.raid=null;report('Raid repelled',NODES[r.i].n+' holds.',xpAll()+applyRw({c:.6,r:.8},true))}}
-    g.roamT-=dt;if(g.roamT<=0){g.roamT=R(16,24);if(S.tut&&g.foes.length<2&&!(g.enc&&g.enc.on)&&!(g.raid&&g.raid.on)&&D(p,NP(0))>800){
-      const t=Math.max(0,S.rank-1);spawn([...rep('f',2+Math.min(2,Math.floor(S.rank/2))),...rep('g',S.rank>=2?1:0)],t,p.x,p.y,'roam',680,860);toast('Raiders on the scope')}}
+    g.roamT-=dt;if(g.roamT<=0){g.roamT=R(9,15);if(S.tut&&g.foes.length<2&&!(g.enc&&g.enc.on)&&!(g.raid&&g.raid.on)&&D(p,NP(0))>800){
+      const t=Math.max(0,S.rank-1);spawn([...rep('f',3+Math.min(2,Math.floor(S.rank/2))),...rep('g',S.rank>=2?1:0)],t,p.x,p.y,'roam',680,860);toast('Raiders on the scope')}}
+    g.wreckT-=dt;if(g.wreckT<=0){g.wreckT=R(18,30);if(S.tut&&!(g.enc&&g.enc.on)&&!(g.raid&&g.raid.on)&&g.wrecks.length<3){
+      for(let k=0;k<20;k++){const a=R(0,6.283),d=R(600,1000),x=clamp(p.x+Math.cos(a)*d,80,WW-80),y=clamp(p.y+Math.sin(a)*d,80,WH-80);
+        if(NODES.every((n,i)=>D(NP(i),{x,y})>600)&&!g.wrecks.some(w=>D(w,{x,y})<400)){g.wrecks.push({x,y,ang:R(0,6.283),r:26});break}}}}
+    g.wrecks=g.wrecks.filter(w=>D(w,p)<3000);
+    const salvaged=g.wrecks.find(w=>D(w,p)<p.r+70);
+    if(salvaged){const v=Math.round(stdC()*.25);S.credits+=v;toast('Salvaged a wreck  +'+v+' credits');note('You strip a dead freighter for parts. +'+v+' credits.');g.fx.push({k:'ring',x:salvaged.x,y:salvaged.y,r:60,t:.4,T:.4});g.wrecks=g.wrecks.filter(w=>w!==salvaged)}
     for(const e of g.foes)if(e.grp==='roam'&&D(e,p)>2700)e.gone=true;
     if(S.tut&&!g.enc&&!(g.raid&&g.raid.on)&&calm){g.offerT-=dt;if(g.offerT<=0){g.offerT=30;offer()}}
     g.payT+=dt;if(g.payT>=75){g.payT=0;payout()}
@@ -654,6 +660,10 @@ const Game=(()=>{
     for(let i=0;i<NODES.length;i++){const n=NP(i),pl=planet(i),o={x:n.x-250,y:n.y-190};if(vis(o,pl.w))cx.drawImage(pl,o.x-pl.w/2,o.y-pl.h/2,pl.w,pl.h);if(vis(n,340))station(i)}
     if(g.enc&&!g.enc.on){const en=g.enc;cx.strokeStyle='rgba(240,160,60,.6)';cx.lineWidth=2;cx.setLineDash([10,12]);cx.beginPath();cx.arc(en.x,en.y,520,g.t*.2,g.t*.2+6.283);cx.stroke();cx.setLineDash([])}
     for(const k of g.rk)if(vis(k,90))rockArt(k);
+    for(const w of g.wrecks)if(vis(w,90)){cx.save();cx.translate(w.x,w.y);cx.rotate(w.ang);
+      cx.fillStyle='#241d2c';cx.fillRect(-34,-12,68,24);cx.fillStyle='#3a3145';cx.fillRect(-20,-18,40,10);cx.strokeStyle='#f0a03c';cx.lineWidth=2;cx.strokeRect(-34,-12,68,24);
+      cx.fillStyle=Math.sin(g.t*4+w.x)>0?'#f0a03c':'#5a3a20';cx.beginPath();cx.arc(24,0,3,0,7);cx.fill();cx.restore();
+      cx.globalCompositeOperation='lighter';lit('#f0a03c',w.x,w.y,20+Math.sin(g.t*4)*4,.5);cx.globalCompositeOperation='source-over'}
     for(const q of g.pods)if(!q.got){cx.globalCompositeOperation='lighter';lit('#62bfae',q.x,q.y,26+Math.sin(g.t*5)*6,.8);cx.globalCompositeOperation='source-over';blit(SP.pod,q.x,q.y,g.t*.6)}
     if(g.conv){const c=g.conv;cx.globalCompositeOperation='lighter';lit('#8fb0ff',c.x-Math.cos(c.ang)*44,c.y-Math.sin(c.ang)*44,16,.9);cx.globalCompositeOperation='source-over';blit(SP.haul,c.x,c.y,c.ang);if(c.flash>0){cx.globalCompositeOperation='lighter';blit(SP.haul,c.x,c.y,c.ang);cx.globalCompositeOperation='source-over'}}
     for(const e of g.foes){if(!vis(e,160)&&!e.tele)continue;
@@ -682,7 +692,7 @@ const Game=(()=>{
     const arrow=(o,c,big,label)=>{const sx=(o.x-p.x)*sc+W/2,sy=(o.y-p.y)*sc+H/2;if(sx>0&&sx<W&&sy>0&&sy<H)return;const an=Math.atan2(sy-H/2,sx-W/2),ex=clamp(sx,26,W-26),ey=clamp(sy,top+96,H-26),k=big?1.7:1;
       cx.save();cx.translate(ex,ey);cx.rotate(an);cx.fillStyle=c;Pp(cx,[[9*k,0],[-6*k,-6*k],[-6*k,6*k]]);cx.fill();cx.restore();
       if(label){cx.font='600 11px '+FD;cx.fillStyle=c;cx.textAlign='center';cx.fillText(label,clamp(ex-Math.cos(an)*26,30,W-30),clamp(ey-Math.sin(an)*26+4,top+100,H-12))}};
-    g.foes.forEach(e=>D(e,p)<2200&&arrow(e,e.drone?'#e6d9b4':e.cap?'#ff5a4a':'#d9574a'));g.pods.forEach(q=>q.got||arrow(q,'#62bfae'));if(g.conv)arrow(g.conv,'#8fa3c9',true);
+    g.foes.forEach(e=>D(e,p)<2200&&arrow(e,e.drone?'#e6d9b4':e.cap?'#ff5a4a':'#d9574a'));g.pods.forEach(q=>q.got||arrow(q,'#62bfae'));g.wrecks.forEach(w=>arrow(w,'rgba(240,160,60,.8)'));if(g.conv)arrow(g.conv,'#8fa3c9',true);
     const km=o=>Math.round(D(o,p)/10)*10+' m';
     let wp=null;if(g.enc&&!g.enc.on)wp=g.enc;else if(g.raid&&!g.raid.on)wp=NP(g.raid.i);
     if(wp)arrow(wp,'#f0a03c',true,km(wp));else if(!g.foes.length&&D(p,NP(0))>700){let best=NP(0);S.own.forEach((o,i)=>{if(o==='you'&&D(p,NP(i))<D(p,best))best=NP(i)});arrow(best,'rgba(230,217,180,.7)',false,'DOCK')}
@@ -710,6 +720,7 @@ const Game=(()=>{
     NODES.forEach((n,i)=>{const q=mp(NP(i));cx.fillStyle=HOUSES[S.own[i]].c;cx.beginPath();cx.arc(q[0],q[1],i===10?4:3,0,7);cx.fill()});
     if(wp){const q=mp(wp);cx.strokeStyle='#f0a03c';cx.lineWidth=1.5;cx.beginPath();cx.arc(q[0],q[1],5+Math.sin(g.t*5),0,7);cx.stroke()}
     {const q=mp(p);cx.fillStyle='#fff';cx.fillRect(q[0]-2,q[1]-2,4,4)}
+    g.wrecks.forEach(w=>{const q=mp(w);cx.fillStyle='#f0a03c';cx.fillRect(q[0]-1.5,q[1]-1.5,3,3)});
     /* prompts, comms, hints */
     cx.textAlign='center';const tch=inp.touch||isTouch();
     if(g.act){cx.font='600 16px '+FD;cx.fillStyle='#f0a03c';cx.fillText(g.act==='dock'?(tch?'TAP DOCK':'PRESS E TO DOCK')+' AT '+NODES[g.dockN].n.toUpperCase():(tch?'HOLD BOARD TO CAPTURE':'HOLD E TO BOARD'),W/2,H*.66);
