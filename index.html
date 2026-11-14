@@ -869,6 +869,7 @@ const Game=(()=>{
     if(inp.ov){mx=inp.ov.mx;my=inp.ov.my}
     let ml=Math.hypot(mx,my);if(ml>1){mx/=ml;my/=ml;ml=1}
     if(ml>.2)pl.ang=Math.atan2(my,mx);
+    pl.wk=ml>.2?(pl.wk||0)+dt*ml:0;if(mx>.2)pl.fx=1;else if(mx<-.2)pl.fx=-1;
     stMove(pl,mx*195*dt,my*195*dt);
     s.room=s.rooms.findIndex(r=>pl.x>=r.x&&pl.x<=r.x+r.w&&pl.y>=r.y&&pl.y<=r.y+r.h);
     if(s.room<0){let bi=0,bd=1e9;s.rooms.forEach((r,i)=>{const d=Math.abs(pl.x-(r.x+r.w/2));if(d<bd){bd=d;bi=i}});s.room=bi}
@@ -917,14 +918,14 @@ const Game=(()=>{
       cx.save();cx.translate(o.x,o.y);cx.rotate(o.ang);const q=cx.createLinearGradient(0,-o.r,0,o.r);q.addColorStop(0,a);q.addColorStop(1,b);cx.fillStyle=q;cx.beginPath();cx.ellipse(-1,0,o.r*.72,o.r*1.12,0,0,7);cx.fill();
       cx.fillStyle=a;cx.beginPath();cx.arc(1,0,o.r*.56,0,7);cx.fill();cx.fillStyle='rgba(0,0,0,.45)';cx.fillRect(o.r*.2,-o.r*.3,o.r*.3,o.r*.6);cx.restore()};
     const wIm=ART.walker;
-    if(wIm&&wIm.complete&&wIm.naturalWidth){
-      cx.fillStyle='rgba(0,0,0,.4)';cx.beginPath();cx.ellipse(pl.x+3,pl.y+5,pl.r*1.1,pl.r*.8,0,0,7);cx.fill();
-      cx.save();cx.translate(pl.x,pl.y);cx.rotate(pl.ang);
-      const k=36/Math.max(wIm.naturalWidth,wIm.naturalHeight);
-      cx.drawImage(wIm,-wIm.naturalWidth*k/2,-wIm.naturalHeight*k/2,wIm.naturalWidth*k,wIm.naturalHeight*k);
-      cx.restore();
-    }else body(pl,'#ffc060','#7a4410');
-    const fig=(q,c,sub)=>{if(wIm&&wIm.complete&&wIm.naturalWidth){cx.save();cx.translate(q.x,q.y);const k=36/Math.max(wIm.naturalWidth,wIm.naturalHeight);cx.drawImage(wIm,-wIm.naturalWidth*k/2,-wIm.naturalHeight*k/2,wIm.naturalWidth*k,wIm.naturalHeight*k);cx.restore()}
+    /* the walker art is a figure seen from behind with its head at the left of the image: stand it upright (never spin it with the heading), face it left/right, and bob it while walking */
+    const wdraw=(x,y,ph,fx)=>{const k=36/Math.max(wIm.naturalWidth,wIm.naturalHeight),st=ph?Math.sin(ph*11):0;
+      cx.fillStyle='rgba(0,0,0,.4)';cx.beginPath();cx.ellipse(x,y+16,10,4,0,0,7);cx.fill();
+      cx.save();cx.translate(x,y-Math.abs(st)*2.2);cx.scale(fx||1,1);cx.rotate(1.5708+st*.09);
+      cx.drawImage(wIm,-wIm.naturalWidth*k/2,-wIm.naturalHeight*k/2,wIm.naturalWidth*k,wIm.naturalHeight*k);cx.restore()};
+    if(wIm&&wIm.complete&&wIm.naturalWidth)wdraw(pl.x,pl.y,pl.wk,pl.fx);
+    else body(pl,'#ffc060','#7a4410');
+    const fig=(q,c,sub)=>{if(wIm&&wIm.complete&&wIm.naturalWidth)wdraw(q.x,q.y,0,1);
       else body(q,'#c8b890','#5a4a28');
       cx.font='600 12px '+FD;cx.fillStyle='#e6d9b4';cx.fillText(c.name.toUpperCase(),q.x,q.y+52);cx.fillText(sub,q.x,q.y+68)};
     S.pool.forEach((c,i)=>fig({x:2450+i*90,y:130},c,c.cost+' CR'));
