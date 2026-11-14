@@ -224,7 +224,27 @@ const T=[
  {id:'books',rk:[2,5],t:'The Quartermaster\'s Books',x:'The quartermaster\'s books do not add up. Rations, med-gel and spare parts are walking out of the stores, and the manifests are too clean to be honest.',ch:[
    {t:'Expose him',out:{x:'You lay the books before the board. He is dismissed in disgrace, and the officers who liked him do not forget your name.',rw:{r:1.4,s:4}}},
    {t:'Take a cut',out:{x:'A share of the skim finds its way to your own stores. The quartermaster smiles at you now, like a man with a secret to keep.',rw:{c:1.2,s:8}}},
-   {t:'Fix the books quietly',check:{role:'engineer',mod:1},pass:{x:'You rebuild the manifests so the gaps close and the skimming stops. No one is punished, and no one is robbed again.',rw:{r:1,e:6}},fail:{x:'Your tampering is spotted. The quartermaster quietly undoes it and adds your name to a list.',rw:{s:8}}}]}];
+   {t:'Fix the books quietly',check:{role:'engineer',mod:1},pass:{x:'You rebuild the manifests so the gaps close and the skimming stops. No one is punished, and no one is robbed again.',rw:{r:1,e:6}},fail:{x:'Your tampering is spotted. The quartermaster quietly undoes it and adds your name to a list.',rw:{s:8}}}]},
+ {id:'orphanhauler',rk:[1,4],t:'The Orphaned Hauler',x:'A hauler drifts dead in the lane, full of Cinder orphans bound for a work camp.',ch:[
+   {t:'Tow it home yourself',fight:{n:'Orphaned hauler',mod:0,kind:'escort',rw:{c:1,r:1.4},x:'You bring the hauler home under your guns. The orphans press their faces to the glass as the anchorage opens.'}},
+   {t:'Strip it and leave them',out:{x:'You take the cargo and leave the hauler drifting. The manifest will call it a loss.',rw:{c:1.2,e:-10}}},
+   {t:'Log it as empty and let it run',out:{x:'You log the ship as empty. By night it is running for a Cinder safe port, and no one asks how.',rw:{e:12,s:7}}}]},
+ {id:'medgel',rk:[1,3],t:'The Black-Market Med-Gel',x:'A dealer offers med-gel at half price, no questions asked. The lower decks have had no medic in a month.',ch:[
+   {t:'Buy it quietly',cost:1,out:{x:'The gel reaches the lower decks by night. No one asks where it came from.',rw:{c:-1,e:12,s:6}}},
+   {t:'Arrest him',out:{x:'He is taken below in cuffs. Your record gains a note for vigilance.',rw:{r:1.2}}},
+   {t:'Walk away',out:{x:'You walk away. The dealer finds another buyer before the hour is out.',rw:{}}}]},
+ {id:'widow',rk:[2,5],t:"The Duellist's Widow",x:'The widow of a captain you beat in a duel demands satisfaction, ship to ship, with the whole wardroom watching.',ch:[
+   {t:'Give her the duel',fight:{n:"Widow's corvette",mod:1,kind:'duel',rw:{c:1.6,r:1.8},x:'Her ship drifts, dark. She salutes you from the tug, and the wardroom does not forget it.'}},
+   {t:'Refuse',out:{x:'You refuse. She tells the story at every table in the sector.',rw:{r:-.4}}},
+   {t:"Pay her family's debt instead",cost:1,out:{x:'Credits change hands and the duel is forgotten. Her children will eat this winter.',rw:{c:-1,e:10,r:.5}}}]},
+ {id:'turncoat',rk:[3,5],t:'The Turncoat Preceptor',x:'A Preceptor has been quietly feeding College exam answers to Cinder cadets. An Inquisitor asks you to name him.',ch:[
+   {t:'Name him',out:{x:'You name him. He is taken below, and the cadets he helped will not look at you again.',rw:{r:1.5,e:-12,s:-8}}},
+   {t:'Warn him first',check:{role:'engineer',mod:0},pass:{x:'You scrub the trail before the Inquisitor moves. He owes you his life, and he knows it.',rw:{e:12,s:6}},fail:{x:'Your warning comes too late, and the edit marks point back at you.',rw:{s:10}}},
+   {t:'Say you know nothing',out:{x:'You say you know nothing. The Inquisitor watches you a moment longer than is comfortable.',rw:{}}}]},
+ {id:'saint',rk:[2,5],t:'The Ember Saint',x:'A Cinder preacher in the deeps is drawing crowds with a flame glyph. Strike command wants him silenced.',ch:[
+   {t:'Arrest him',out:{x:'You take him in chains. The crowds scatter, and the deeps go quiet.',rw:{r:1.4,e:-12}}},
+   {t:'Let him preach and walk away',out:{x:'You let him preach. By morning the flame glyph is on a dozen more pipes.',rw:{e:14,s:10}}},
+   {t:'Send marines to take him alive',check:{role:'marine',mod:0},pass:{x:'Your marines take him alive, without a shot. Strike command is pleased, and the deeps remember the restraint.',rw:{r:1.2,e:8}},fail:{x:'The boarding goes badly. He slips away in the confusion, and strike command takes the matter out of your hands.',rw:{r:.2}}}]}];
 
 /* ============ STATE ============ */
 const R=(a,b)=>a+Math.random()*(b-a),RI=(a,b)=>Math.floor(R(a,b+1)),pick=a=>a[Math.floor(Math.random()*a.length)];
