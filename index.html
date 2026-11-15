@@ -78,6 +78,10 @@ button{font:600 .95rem var(--data);letter-spacing:.06em}
 #bItems{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:6px}
 #arena #bItems button{position:static;width:64px;height:40px}
 #arena:not(.touch) #bItems{display:none}
+#arena.touch #bItems{top:auto;bottom:calc(36px + env(safe-area-inset-bottom,0px));right:max(24px,env(safe-area-inset-right,0px));flex-direction:row;gap:16px}
+#arena.touch #bItems button{width:64px;height:64px;border-radius:50%;font-size:.8rem}
+#arena.touch #bDash{width:64px;height:64px;border-radius:50%;right:max(24px,env(safe-area-inset-right,0px));bottom:calc(116px + env(safe-area-inset-bottom,0px))}
+#arena.touch #bAct{right:max(24px,env(safe-area-inset-right,0px));bottom:calc(196px + env(safe-area-inset-bottom,0px))}
 #arena:not(.touch) #bDash,#arena:not(.touch) #bAct{display:none}
 svg.map{width:100%;height:auto;background:var(--panel2);border:1px solid var(--line)}
 svg.map text{font:600 11px var(--data);fill:var(--fg);letter-spacing:.05em}
@@ -318,6 +322,8 @@ const Game=(()=>{
   const keys={},inp={mx:0,my:0,down:false,L:null,R:null,board:false,dashQ:false,touch:false,ov:null};
   const D=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),rep=(c,n)=>Array(Math.max(0,n)).fill(c);
   const isTouch=()=>matchMedia('(pointer:coarse)').matches;
+  /* touch controls follow Ashfall Survivors: a fixed thumb stick bottom-left whose value is measured from its centre (55px of travel), attacks that fire by themselves at the nearest hostile, round buttons bottom-right */
+  const stickC=()=>{const cs=getComputedStyle(document.documentElement);return{x:86+(parseFloat(cs.paddingLeft)||0),y:H-82-(parseFloat(cs.paddingBottom)||0)}};
   function buildWaves(s){const t=s.t,w=[];
     if(s.kind==='duel')w.push([...rep('f',1+Math.floor(t/2)),...rep('g',Math.floor(t/3)),'c']);
     else if(s.kind==='escort')for(let i=0;i<3;i++)w.push([...rep('f',2+Math.floor(t/2)),...rep('g',Math.floor((t+i)/3))]);
@@ -372,7 +378,7 @@ const Game=(()=>{
     cv.addEventListener('contextmenu',e=>e.preventDefault());
     cv.addEventListener('pointerdown',e=>{e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(x){}
       if(e.pointerType==='mouse'){inp.touch=false;inp.mx=e.clientX;inp.my=e.clientY;if(e.button===2)inp.dashQ=true;else inp.down=true}
-      else{inp.touch=true;const s={id:e.pointerId,ox:e.clientX,oy:e.clientY,x:e.clientX,y:e.clientY};if(e.clientX<W/2){if(!inp.L)inp.L=s}else if(!inp.R)inp.R=s}});
+      else{inp.touch=true;const s={id:e.pointerId,ox:e.clientX,oy:e.clientY,x:e.clientX,y:e.clientY};if(e.clientX<W*.4&&e.clientY>H*.5){if(!inp.L){const c=stickC();s.ox=c.x;s.oy=c.y;inp.L=s}}else if(e.clientX>=W/2&&!inp.R)inp.R=s}});
     cv.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){inp.mx=e.clientX;inp.my=e.clientY}else for(const s of[inp.L,inp.R])if(s&&s.id===e.pointerId){s.x=e.clientX;s.y=e.clientY}});
     const up=e=>{if(e.pointerType==='mouse'){if(e.button!==2)inp.down=false}else{if(inp.L&&inp.L.id===e.pointerId)inp.L=null;if(inp.R&&inp.R.id===e.pointerId)inp.R=null}};
     cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
@@ -383,7 +389,7 @@ const Game=(()=>{
     $('bPause').addEventListener('click',()=>{if(g&&walk&&g.station){walk=false;show()}else pause()});
   }
   function resize(){W=innerWidth;H=innerHeight;dpr=Math.min(2,devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;sc=clamp(Math.min(W,H)/560,.7,1.1)}
-  function helpHtml(){return isTouch()?`<div class="keys"><b>LEFT THUMB</b><span>Fly</span><b>RIGHT THUMB</b><span>Aim. Your guns fire while you hold it</span><b>DASH</b><span>Burst of speed. Nothing can hit you mid-dash</span><b>DOCK / BOARD</b><span>Appears when you are beside your anchorage or a crippled warship</span><b>1 / 2 / 3</b><span>Numbered buttons, top right — use a store item</span></div>`
+  function helpHtml(){return isTouch()?`<div class="keys"><b>THUMB STICK</b><span>Fly. Bottom left</span><b>GUNS</b><span>Fire by themselves at the nearest hostile in range</span><b>RIGHT THUMB</b><span>Drag to aim and fire by hand instead</span><b>DASH</b><span>Burst of speed. Nothing can hit you mid-dash</span><b>DOCK / BOARD</b><span>Appears when you are beside your anchorage or a crippled warship</span><b>1 / 2 / 3</b><span>Round buttons, bottom right — use a store item</span></div>`
     :`<div class="keys"><b>W A S D</b><span>Fly (arrow keys work too)</span><b>MOUSE</b><span>Aim. Hold the left button or Space to fire</span><b>SHIFT</b><span>Dash (or right-click). Nothing can hit you mid-dash</span><b>E</b><span>Dock at your anchorage. Hold beside a crippled warship to board it</span><b>1 / 2 / 3</b><span>Use a store item</span><b>ESC</b><span>Pause</span></div>`}
   function pause(){if(!g||docked||!$('modal').hidden)return;
     modal(`<h2>Paused</h2>${helpHtml()}<p class="dim">A red line means a heavy shell is about to come down it. Dock at any anchorage you hold to refit, hire crew and stand for promotion.</p>
@@ -457,11 +463,14 @@ const Game=(()=>{
     checkRoster();
     /* input */
     let mx=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),my=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0),fire=false;
-    if(inp.L){mx=(inp.L.x-inp.L.ox)/48;my=(inp.L.y-inp.L.oy)/48}
+    if(inp.L){mx=(inp.L.x-inp.L.ox)/55;my=(inp.L.y-inp.L.oy)/55}
     if(inp.ov){mx=inp.ov.mx;my=inp.ov.my}
     let ml=Math.hypot(mx,my);if(ml>1){mx/=ml;my/=ml;ml=1}
     if(inp.ov){p.ang=inp.ov.ang;fire=inp.ov.fire}
-    else if(inp.touch){if(inp.R){const dx=inp.R.x-inp.R.ox,dy=inp.R.y-inp.R.oy;if(Math.hypot(dx,dy)>10){p.ang=Math.atan2(dy,dx);fire=true}}else if(ml>.2)p.ang=Math.atan2(my,mx)}
+    else if(inp.touch){const rd=inp.R?Math.hypot(inp.R.x-inp.R.ox,inp.R.y-inp.R.oy):0;
+      if(rd>10){p.ang=Math.atan2(inp.R.y-inp.R.oy,inp.R.x-inp.R.ox);fire=true}
+      else{let tg=null,bd=600;for(const e of g.foes){if(e.cap&&g.thr&&e.sh<e.maxSh*.15+1&&e.hp/e.maxHp<=g.thr)continue;const d=D(e,p)-e.r;if(d<bd){bd=d;tg=e}}
+        if(tg){p.ang=Math.atan2(tg.y-p.y,tg.x-p.x);fire=true}else if(ml>.2)p.ang=Math.atan2(my,mx)}}
     else{p.ang=Math.atan2(inp.my-H/2,inp.mx-W/2);fire=inp.down||keys.Space}
     /* player motion */
     p.dashCd-=dt;p.rockCd-=dt;p.flash-=dt;p.ovT=Math.max(0,(p.ovT||0)-dt);
@@ -561,11 +570,14 @@ const Game=(()=>{
     const d=g.deck,pl=d.pl;
     if(d.won>0){d.won-=dt;if(d.won<=0){const s=d.ship;g.deck=null;s.gone=true;boom(s.x,s.y,20);g.foes=g.foes.filter(e=>e!==s);killed(s,true);g.foes=g.foes.filter(e=>!e.gone)}return}
     let mx=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),my=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0),fire=false;
-    if(inp.L){mx=(inp.L.x-inp.L.ox)/48;my=(inp.L.y-inp.L.oy)/48}
+    if(inp.L){mx=(inp.L.x-inp.L.ox)/55;my=(inp.L.y-inp.L.oy)/55}
     if(inp.ov){mx=inp.ov.mx;my=inp.ov.my}
     let ml=Math.hypot(mx,my);if(ml>1){mx/=ml;my/=ml;ml=1}
     if(inp.ov){pl.ang=inp.ov.ang;fire=inp.ov.fire}
-    else if(inp.touch){if(inp.R){const dx=inp.R.x-inp.R.ox,dy=inp.R.y-inp.R.oy;if(Math.hypot(dx,dy)>10){pl.ang=Math.atan2(dy,dx);fire=true}}else if(ml>.2)pl.ang=Math.atan2(my,mx)}
+    else if(inp.touch){const rd=inp.R?Math.hypot(inp.R.x-inp.R.ox,inp.R.y-inp.R.oy):0;
+      if(rd>10){pl.ang=Math.atan2(inp.R.y-inp.R.oy,inp.R.x-inp.R.ox);fire=true}
+      else{let tg=null,bd=320;for(const m of d.mobs){if(m.room>d.room)continue;const q=Math.hypot(m.x-pl.x,m.y-pl.y);if(q<bd){bd=q;tg=m}}
+        if(tg){pl.ang=Math.atan2(tg.y-pl.y,tg.x-pl.x);fire=true}else if(ml>.2)pl.ang=Math.atan2(my,mx)}}
     else{pl.ang=Math.atan2(inp.my-H/2,inp.mx-W/2);fire=inp.down||keys.Space}
     pl.rollCd-=dt;pl.atk-=dt;pl.swing-=dt;pl.flash-=dt;
     if(pl.chg<6){pl.chgT+=dt;if(pl.chgT>=1.3){pl.chg++;pl.chgT=0}}
@@ -721,7 +733,10 @@ const Game=(()=>{
   function overlay(){
     if(g.bannerT>0){cx.globalAlpha=Math.min(1,g.bannerT);cx.textAlign='center';const big=g.banner===g.banner.toUpperCase();cx.font='800 '+(big?28:17)+'px Cinzel,Georgia,serif';cx.fillStyle=/LOST|FAILED/.test(g.banner)?'#d9574a':'#f0a03c';
       let line='',y=H*.38;for(const w of g.banner.split(' ')){if(line&&cx.measureText(line+w).width>W-40){cx.fillText(line,W/2,y);y+=big?32:24;line=''}line+=w+' '}cx.fillText(line,W/2,y);cx.globalAlpha=1}
-    for(const s of[inp.L,inp.R])if(s){cx.strokeStyle='rgba(236,228,214,.35)';cx.lineWidth=2;cx.beginPath();cx.arc(s.ox,s.oy,48,0,7);cx.stroke();const dx=s.x-s.ox,dy=s.y-s.oy,l=Math.max(48,Math.hypot(dx,dy));cx.fillStyle='rgba(240,160,60,.6)';cx.beginPath();cx.arc(s.ox+dx/l*48,s.oy+dy/l*48,20,0,7);cx.fill()}}
+    if(inp.touch||isTouch()){const c=stickC(),L=inp.L;let dx=L?(L.x-c.x)/55:0,dy=L?(L.y-c.y)/55:0;const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}
+      cx.fillStyle='rgba(13,11,16,.55)';cx.beginPath();cx.arc(c.x,c.y,58,0,7);cx.fill();cx.strokeStyle='rgba(236,228,214,.45)';cx.lineWidth=2;cx.stroke();
+      cx.fillStyle=L?'rgba(240,160,60,.75)':'rgba(236,228,214,.4)';cx.beginPath();cx.arc(c.x+dx*45,c.y+dy*45,24,0,7);cx.fill()}
+    {const s=inp.R;if(s){cx.strokeStyle='rgba(236,228,214,.35)';cx.lineWidth=2;cx.beginPath();cx.arc(s.ox,s.oy,48,0,7);cx.stroke();const dx=s.x-s.ox,dy=s.y-s.oy,l=Math.max(48,Math.hypot(dx,dy));cx.fillStyle='rgba(240,160,60,.6)';cx.beginPath();cx.arc(s.ox+dx/l*48,s.oy+dy/l*48,20,0,7);cx.fill()}}}
   const FD='"Barlow Condensed","Arial Narrow",sans-serif';
   function hbar(y,v,m,c,l){cx.fillStyle='rgba(20,16,26,.8)';cx.fillRect(14,y,150,12);cx.fillStyle=c;cx.fillRect(14,y,150*clamp(v/(m||1),0,1),12);cx.fillStyle='rgba(255,255,255,.22)';cx.fillRect(14,y,150*clamp(v/(m||1),0,1),3);cx.fillStyle='#ece4d6';cx.font='600 11px '+FD;cx.textAlign='left';cx.fillText(l,170,y+10)}
   function wrapText(s,x,y,w,lh){let line='';for(const word of s.split(' ')){if(line&&cx.measureText(line+word).width>w){cx.fillText(line,x,y);y+=lh;line=''}line+=word+' '}cx.fillText(line,x,y);return y+lh}
@@ -812,7 +827,7 @@ const Game=(()=>{
       cx.textAlign='left';cx.font='600 13px '+FD;cx.fillStyle='#f0a03c';cx.fillText(c.title.toUpperCase(),bx+14,by+19);cx.font='500 13px '+FD;cx.fillStyle='#ece4d6';const ty=wrapText(c.text,bx+14,by+37,bw-24,16);
       if(c.extra){cx.fillStyle='#f0a03c';cx.font='600 13px '+FD;cx.fillText(c.extra,bx+14,ty+1)}cx.globalAlpha=1}
     if(!S.tut){cx.textAlign='center';cx.font='600 14px '+FD;cx.fillStyle='rgba(236,228,214,.9)';
-      const hs=tch?['LEFT THUMB: FLY','RIGHT THUMB: AIM AND FIRE','DASH: DODGE THROUGH FIRE']:['W A S D: FLY','MOUSE: AIM   ·   HOLD CLICK OR SPACE: FIRE','SHIFT: DASH THROUGH FIRE'];hs.forEach((s,i)=>cx.fillText(s,W/2,H*.58+i*20))}
+      const hs=tch?['THUMB STICK: FLY','GUNS FIRE AT THE NEAREST HOSTILE','DASH: DODGE THROUGH FIRE']:['W A S D: FLY','MOUSE: AIM   ·   HOLD CLICK OR SPACE: FIRE','SHIFT: DASH THROUGH FIRE'];hs.forEach((s,i)=>cx.fillText(s,W/2,H*.58+i*20))}
     overlay();
   }
   function drawDeck(top){
@@ -877,10 +892,10 @@ const Game=(()=>{
   function stepStation(dt){
     const s=g.station,pl=s.pl;
     let mx=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),my=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);
-    if(inp.L){mx=(inp.L.x-inp.L.ox)/48;my=(inp.L.y-inp.L.oy)/48}
+    if(inp.L){mx=(inp.L.x-inp.L.ox)/55;my=(inp.L.y-inp.L.oy)/55}
     if(inp.ov){mx=inp.ov.mx;my=inp.ov.my}
     let ml=Math.hypot(mx,my);if(ml>1){mx/=ml;my/=ml;ml=1}
-    if(ml>.2)pl.ang=Math.atan2(my,mx);
+    if(ml>.2){pl.ang=Math.atan2(my,mx);const ax=Math.abs(mx),ay=Math.abs(my),side=pl.face===2?ax*1.35>=ay:pl.face==null?ax>=ay:ax>ay*1.35;pl.face=side?2:my>0?0:1;pl.fang=side?(mx<0?3.1416:0):my>0?1.5708:-1.5708}
     pl.wk=ml>.2?(pl.wk||0)+dt*ml:0;if(mx>.2)pl.fx=1;else if(mx<-.2)pl.fx=-1;
     for(const n of s.npcs||[]){if(n.wait>0){n.wait-=dt;n.wk=0;if(n.wait<=0){n.tx=n.x0+Math.random()*(n.x1-n.x0);n.ty=n.y0+Math.random()*(n.y1-n.y0)}}
       else{const dx=n.tx-n.x,dy=n.ty-n.y,d=Math.hypot(dx,dy),sp=n.kind==='d'?60:80;if(d<4)n.wait=1+Math.random()*4;else{const nx=n.x+dx/d*sp*dt,ny=n.y+dy/d*sp*dt;if(dressHit(nx,ny,9)&&!dressHit(n.x,n.y,9))n.wait=.4+Math.random();else{n.x=nx;n.y=ny;n.ang=Math.atan2(dy,dx);n.wk+=dt*.45}}}}
@@ -950,7 +965,7 @@ const Game=(()=>{
         cx.save();cx.translate(n.x,n.y-4+Math.sin(T*6)*.8);if(Math.cos(n.ang)<0)cx.scale(-1,1);cx.drawImage(dm,-w/2,-h/2,w,h);cx.restore();add(()=>lit('#62bfae',n.x,n.y-3,9,.5+.3*Math.sin(T*5)))}
       else if(wk){const own=n.kind!=='walk'&&aok(n.kind);if(own)wsheet(n.x,n.y,n.ang,n.wk,own,50,28);else wsheet(n.x,n.y,n.ang,n.wk,tinted(n.tint||'#c8b890'))}};
     /* furniture, crew and you are drawn in one pass sorted by where their feet are, so you can walk behind things */
-    const Q=[{y:pl.y+15,f:()=>{if(wk)wsheet(pl.x,pl.y,pl.ang,pl.wk);else if(wIm&&wIm.complete&&wIm.naturalWidth)wdraw(pl.x,pl.y,pl.wk,pl.fx);else body(pl,'#ffc060','#7a4410')}}];
+    const Q=[{y:pl.y+15,f:()=>{if(wk)wsheet(pl.x,pl.y,pl.fang==null?pl.ang:pl.fang,pl.wk);else if(wIm&&wIm.complete&&wIm.naturalWidth)wdraw(pl.x,pl.y,pl.wk,pl.fx);else body(pl,'#ffc060','#7a4410')}}];
     for(const d of DRESS)if(aok(d[0]))Q.push({y:d[2]+d[7]+d[6]/2,f:()=>prop(d[0],d[1],d[2],d[3],d[4])});
     for(const n of s.npcs||[])Q.push({y:n.y+15,f:()=>npc(n)});
     Q.sort((a,b)=>a.y-b.y).forEach(q=>q.f());
@@ -974,7 +989,7 @@ const Game=(()=>{
     cx.textAlign='left';cx.font='600 13px '+FD;cx.fillStyle='#e6d9b4';
     cx.fillText(`${['HANGAR','QUARTERS','MARKET','BARRACKS'][s.room]||'HANGAR'}  ·  ${S.credits} CR  ·  SUSPICION ${S.sus}`,14,top+16);
     cx.textAlign='center';cx.font='600 14px '+FD;cx.fillStyle='rgba(236,228,214,.9)';
-    cx.fillText(tch?'DRAG LEFT SIDE TO WALK  ·  SYS FOR SHIP SYSTEMS':'W A S D TO WALK  ·  E TO INTERACT  ·  SYS FOR SHIP SYSTEMS',W/2,H-18);
+    cx.fillText(tch?'THUMB STICK TO WALK  ·  SYS FOR SHIP SYSTEMS':'W A S D TO WALK  ·  E TO INTERACT  ·  SYS FOR SHIP SYSTEMS',W/2,tch?stickC().y-74:H-18);
     cx.font='600 16px '+FD;cx.fillStyle='#f0a03c';
     if(s.act==='launch')cx.fillText((tch?'TAP LAUNCH':'PRESS E TO LAUNCH')+' — '+ROSTER[s.pad||'fighter'].n.toUpperCase(),W/2,H*.66);
     else if(s.act==='launch-no')cx.fillText('SHIP CANNOT LAUNCH — FIX IT IN THE SHIPYARD FIRST',W/2,H*.66);
@@ -1092,7 +1107,7 @@ function vBridge(){
     ${canPromote()?`<div class="row"><button class="btn pri" data-a="tab:college">Your promotion trial is ready</button></div>`:S.rank<5?`<p class="dim">Next rank: ${RANKS[S.rank+1].n} at ${RANKS[S.rank+1].need} renown. ${RANKS[S.rank+1].duty}</p>`:''}
     ${!st.ok?`<p class="bad">Your ship cannot launch. ${st.weapons.length?'It draws more power than it makes.':'It has no weapons.'} Fix it in the Shipyard.</p>`:''}</div>
   <div class="grid2">
-   <div class="card"><h3>How to fly and fight</h3>${touch?`<div class="keys"><b>LEFT THUMB</b><span>Fly</span><b>RIGHT THUMB</b><span>Aim. Guns fire while you hold it</span><b>DASH</b><span>Nothing can hit you mid-dash</span><b>DOCK / BOARD</b><span>Shows up beside your anchorage or a crippled warship</span><b>1 / 2 / 3</b><span>Numbered buttons, top right — use a store item</span></div>`
+   <div class="card"><h3>How to fly and fight</h3>${touch?`<div class="keys"><b>THUMB STICK</b><span>Fly. Bottom left</span><b>GUNS</b><span>Fire by themselves at the nearest hostile in range</span><b>RIGHT THUMB</b><span>Drag to aim and fire by hand instead</span><b>DASH</b><span>Nothing can hit you mid-dash</span><b>DOCK / BOARD</b><span>Shows up beside your anchorage or a crippled warship</span><b>1 / 2 / 3</b><span>Round buttons, bottom right — use a store item</span></div>`
      :`<div class="keys"><b>W A S D</b><span>Fly</span><b>MOUSE</b><span>Aim. Hold click or Space to fire</span><b>SHIFT</b><span>Dash. Nothing can hit you mid-dash</span><b>E</b><span>Dock, or hold to board a crippled warship</span><b>1 / 2 / 3</b><span>Use a store item — repair drone, overcharge cell, shield capacitor</span><b>ESC</b><span>Pause</span></div>`}
     <p class="dim">Orders reach you over comms while you fly and set a gold marker. Raiders roam the dark and pay bounties. A stipend and your holdings pay out every 75 seconds of flight.</p></div>
    <div class="card"><h3>${HULLS[S.hull].n}</h3>${shipStats(st)}</div>
