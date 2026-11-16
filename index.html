@@ -317,6 +317,66 @@ function mulb(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
 function mkRock(r,x,y,rad){const pts=[];for(let j=0;j<9;j++){const a=j/9*6.283,q=rad*(.78+r()*.3);pts.push([Math.cos(a)*q,Math.sin(a)*q])}return{x,y,r:rad*.92,pts,cr:[[(r()-.5)*rad*.8,(r()-.5)*rad*.8,rad*(.12+r()*.12)],[(r()-.5)*rad*.8,(r()-.5)*rad*.8,rad*(.08+r()*.1)]]}}
 const ROCKS=(()=>{const r=mulb(11),o=[];for(let c=0;c<18;c++){let fx=0,fy=0;for(let k=0;k<40;k++){fx=400+r()*(WW-800);fy=400+r()*(WH-800);if(NODES.every((n,i)=>Math.hypot(NP(i).x-fx,NP(i).y-fy)>950))break}
   const n=7+Math.floor(r()*6);for(let i=0;i<n;i++)o.push(mkRock(r,fx+(r()-.5)*760,fy+(r()-.5)*640,26+r()*48))}return o})();
+/* ============ SOUND: everything is synthesised with WebAudio, no audio files. Snd.tick() watches the game state each frame and plays what changed. ============ */
+const Snd=(()=>{
+  let ac=null,out=null,mus=null,eng=null,engG=null,amb=null,ambG=null,noiseB=null,on=true,seen=new WeakSet(),prev={},mt=0,step=0,nextBeat=0;
+  try{on=localStorage.getItem('cinderborn.snd')!=='0'}catch(e){}
+  function boot(){if(ac){if(ac.state==='suspended')ac.resume();return}
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    try{ac=new AC();out=ac.createGain();out.gain.value=on?.9:0;const cmp=ac.createDynamicsCompressor();out.connect(cmp);cmp.connect(ac.destination);
+      noiseB=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=noiseB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+      mus=ac.createGain();mus.gain.value=.5;const dl=ac.createDelay(1),fb=ac.createGain();dl.delayTime.value=.42;fb.gain.value=.36;mus.connect(out);mus.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(out);
+      const loopN=(f,q)=>{const n=ac.createBufferSource(),fl=ac.createBiquadFilter(),gn=ac.createGain();n.buffer=noiseB;n.loop=true;fl.type='lowpass';fl.frequency.value=f;fl.Q.value=q;gn.gain.value=0;n.connect(fl);fl.connect(gn);gn.connect(out);n.start();return[gn,fl]};
+      [engG,eng]=loopN(180,4);[ambG,amb]=loopN(240,1)}catch(e){ac=null}}
+  const env=(g,t,a,pk,dur)=>{g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(pk,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+dur)};
+  function tone(type,f0,f1,dur,vol,dest,at){if(!ac)return;const t=at||ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);if(f1!==f0)o.frequency.exponentialRampToValueAtTime(f1,t+dur);env(g,t,.005,vol,dur);o.connect(g);g.connect(dest||out);o.start(t);o.stop(t+dur+.03)}
+  function noise(f0,f1,dur,vol,type,q){if(!ac)return;const t=ac.currentTime,n=ac.createBufferSource(),fl=ac.createBiquadFilter(),g=ac.createGain();n.buffer=noiseB;n.playbackRate.value=.6+Math.random()*.8;fl.type=type||'lowpass';fl.Q.value=q||1;fl.frequency.setValueAtTime(f0,t);fl.frequency.exponentialRampToValueAtTime(f1,t+dur);env(g,t,.004,vol,dur);n.connect(fl);fl.connect(g);g.connect(out);n.start(t,Math.random()*.5);n.stop(t+dur+.03)}
+  const lim={};const ok=(k,gap)=>{const t=ac?ac.currentTime:0;if(lim[k]&&t-lim[k]<gap)return false;lim[k]=t;return true};
+  const P={
+    shot(){if(ok('shot',.07))tone('square',880+Math.random()*120,240,.09,.05)},
+    foeShot(v){if(ok('fs',.09))tone('sawtooth',420,130,.12,.035*v)},
+    heavy(v){if(ok('hv',.15)){tone('sawtooth',200,55,.35,.09*v);noise(900,120,.3,.08*v)}},
+    beam(){tone('sawtooth',1400,300,.22,.07);noise(3000,600,.2,.05,'bandpass',2)},
+    boom(v,big){if(!ok('boom',.05))return;noise(big?1400:2200,70,big?.9:.45,.32*v);tone('sine',big?90:130,38,big?.7:.35,.3*v)},
+    hit(){if(ok('hit',.1)){noise(700,120,.16,.22);tone('sine',160,60,.14,.2)}},
+    dash(){noise(400,3200,.28,.16,'bandpass',1.5)},
+    chime(){tone('sine',660,660,.18,.12);tone('sine',990,990,.3,.1,null,ac.currentTime+.09)},
+    dock(){tone('triangle',330,330,.2,.1);tone('triangle',495,495,.35,.1,null,ac.currentTime+.14)},
+    launch(){noise(200,2400,.7,.2,'bandpass',1);tone('sawtooth',70,160,.7,.08)},
+    swing(){noise(1800,500,.1,.12,'bandpass',2)},
+    bolt(){tone('square',1200,500,.07,.05)},
+    foot(){noise(900,300,.05,.05,'bandpass',3)},
+    click(){tone('square',1500,1100,.035,.035)},
+    lost(){tone('sawtooth',300,50,1.1,.14);noise(1200,60,1.1,.2)},
+    win(){[523,659,784,1047].forEach((f,i)=>tone('triangle',f,f,.3,.1,null,ac.currentTime+i*.11))}};
+  const count={};const play=(n,a,b)=>{if(ac&&on&&ac.state==='running')try{P[n](a==null?1:a,b);count[n]=(count[n]||0)+1}catch(e){}};
+  /* music: a slow four-chord pad in A minor with sparse bell notes; a low pulse joins while hostiles are close */
+  const CH=[[110,220,261.6,329.6],[87.3,174.6,220,261.6],[130.8,196,261.6,329.6],[98,196,246.9,293.7]],BELL=[440,523.3,587.3,659.3,784,880];
+  function music(tense){if(!ac)return;const t=ac.currentTime;if(t<nextBeat-.3)return;if(nextBeat<t)nextBeat=t+.05;const bar=4.8,c=CH[step%4];
+    c.forEach((f,i)=>{for(const dt of[-3,3]){const o=ac.createOscillator(),g=ac.createGain(),fl=ac.createBiquadFilter();o.type=i?'triangle':'sawtooth';o.frequency.value=f;o.detune.value=dt;fl.type='lowpass';fl.frequency.value=i?900:260;
+      g.gain.setValueAtTime(0.0001,nextBeat);g.gain.linearRampToValueAtTime(i?.03:.045,nextBeat+1.6);g.gain.linearRampToValueAtTime(0.0001,nextBeat+bar+1.2);o.connect(fl);fl.connect(g);g.connect(mus);o.start(nextBeat);o.stop(nextBeat+bar+1.3)}});
+    for(let k=0;k<3;k++)if(Math.random()<.6){const f=BELL[Math.floor(Math.random()*BELL.length)];tone('sine',f,f,1.4,.035,mus,nextBeat+k*1.6+Math.random()*.8)}
+    if(tense)for(let k=0;k<8;k++)tone('triangle',c[0]/2,c[0]/2,.22,.11,mus,nextBeat+k*bar/8);
+    step++;nextBeat+=bar}
+  function tick(g,docked,walk,dt){if(!ac||!on||ac.state!=='running'||!g)return;const t=ac.currentTime,p=g.p,st=docked&&walk&&g.station,dk=!docked&&g.deck,fly=!docked&&!g.deck;
+    const near=(x,y)=>{const d=Math.hypot(x-p.x,y-p.y);return d>1500?0:Math.max(.15,1-d/1500)};
+    if(fly){for(const s of g.shots)if(!seen.has(s)){seen.add(s);if(!s.foe)play('shot');else{const v=near(s.x,s.y);if(v)play(s.hv?'heavy':'foeShot',v)}}
+      for(const f of g.fx)if(!seen.has(f)){seen.add(f);if(f.k==='boom'){const v=near(f.x,f.y);if(v)play('boom',v,f.r>30)}else if(f.k==='beam')play('beam')}
+      if(p.dashT>0&&!(prev.dash>0))play('dash');if(prev.hp!=null&&p.hp<prev.hp-.01&&g.dead<=0)play('hit');if(g.dead>0&&!(prev.dead>0))play('lost');
+      prev.dash=p.dashT;prev.hp=p.hp;prev.dead=g.dead}
+    if(dk){const d=g.deck,pl=d.pl;for(const b of d.bolts)if(!seen.has(b)){seen.add(b);play('bolt')}for(const f of g.fx)if(!seen.has(f)){seen.add(f);if(f.k==='boom')play('boom',.7,false)}
+      if(pl.swing>0&&!(prev.swing>0))play('swing');if(prev.dhp!=null&&pl.hp<prev.dhp-.01)play('hit');if(pl.roll>0&&!(prev.roll>0))play('dash');if(d.won>0&&!(prev.won>0))play('win');
+      prev.swing=pl.swing;prev.dhp=pl.hp;prev.roll=pl.roll;prev.won=d.won}else prev.dhp=null;
+    if(st){const w=g.station.pl.wk||0,f=Math.floor(w*9)%2;if(w>0&&f!==prev.foot)play('foot');prev.foot=f}
+    if(prev.mode!==undefined){const m=docked?1:g.deck?2:0;if(m!==prev.mode){if(m===1)play('dock');else if(prev.mode===1)play('launch')}}prev.mode=docked?1:g.deck?2:0;
+    const thr=fly&&g.dead<=0?Math.min(1,Math.hypot(p.vx,p.vy)/260)+(p.dashT>0?.6:0):0;engG.gain.setTargetAtTime(.02+thr*.085,t,.12);eng.frequency.setTargetAtTime(150+thr*420,t,.15);if(!fly)engG.gain.setTargetAtTime(0,t,.2);
+    ambG.gain.setTargetAtTime(st||dk?.05:0,t,.4);
+    {const it=typeof S!=='undefined'&&S&&S.items,n=it?(it.drone||0)+(it.cell||0)+(it.cap||0):0;if(prev.items!=null&&n<prev.items&&fly)play('chime');prev.items=n}
+    mt-=dt;if(mt<=0){mt=.25;const tense=fly&&g.foes.some(e=>!e.drone&&Math.hypot(e.x-p.x,e.y-p.y)<1100)||!!dk;mus.gain.setTargetAtTime(dk?.42:st?.4:.5,t,.6);music(tense)}}
+  for(const ev of['pointerdown','keydown','touchend'])addEventListener(ev,boot,{capture:true,passive:true});
+  addEventListener('click',e=>{if(e.target.closest&&e.target.closest('button,[data-a]'))play('click')},true);
+  document.addEventListener('visibilitychange',()=>{if(ac)document.hidden?ac.suspend():ac.resume()});
+  return{tick,play,count,get state(){return ac?ac.state:'none'},get on(){return on},toggle(){on=!on;try{localStorage.setItem('cinderborn.snd',on?'1':'0')}catch(e){}boot();if(out)out.gain.setTargetAtTime(on?.9:0,ac.currentTime,.05);return on}}})();
 const Game=(()=>{
   let cv,cx,W=800,H=600,dpr=1,sc=1,raf=0,last=0,g=null,bound=false,docked=false,walk=false,psprite=null,lastAct=null;
   const keys={},inp={mx:0,my:0,down:false,L:null,R:null,board:false,dashQ:false,touch:false,ov:null};
@@ -393,7 +453,7 @@ const Game=(()=>{
     :`<div class="keys"><b>W A S D</b><span>Fly (arrow keys work too)</span><b>MOUSE</b><span>Aim. Hold the left button or Space to fire</span><b>SHIFT</b><span>Dash (or right-click). Nothing can hit you mid-dash</span><b>E</b><span>Dock at your anchorage. Hold beside a crippled warship to board it</span><b>1 / 2 / 3</b><span>Use a store item</span><b>ESC</b><span>Pause</span></div>`}
   function pause(){if(!g||docked||!$('modal').hidden)return;
     modal(`<h2>Paused</h2>${helpHtml()}<p class="dim">A red line means a heavy shell is about to come down it. Dock at any anchorage you hold to refit, hire crew and stand for promotion.</p>
-     <button class="btn pri" data-a="close">Resume</button>${g.enc?'<button class="btn dng" data-a="abandon">Abandon current order<small>−3 renown</small></button>':''}`)}
+     <button class="btn pri" data-a="close">Resume</button><button class="btn" data-a="sound">Sound: ${Snd.on?'on':'off'}</button>${g.enc?'<button class="btn dng" data-a="abandon">Abandon current order<small>−3 renown</small></button>':''}`)}
   /* ---- damage and kills ---- */
   function hurt(o,d,pierce){const th=d*(pierce||0),rest=d-th,ab=Math.min(o.sh,rest);o.sh-=ab;o.hp-=rest-ab+th;o.shD=2.5;o.flash=.09;
     if(g.parts.length<260)for(let i=0;i<2;i++)g.parts.push({x:o.x+R(-o.r,o.r)*.6,y:o.y+R(-o.r,o.r)*.6,vx:R(-90,90),vy:R(-90,90),t:.3,T:.3,c:ab>0?'#62bfae':'#ffb070',s:2})}
@@ -1003,6 +1063,7 @@ const Game=(()=>{
     overlay();
   }
   function loop(now){raf=requestAnimationFrame(loop);if(!g)return;const dt=Math.min(.033,(now-last)/1000);last=now;
+    Snd.tick(g,docked,walk,dt);
     if(docked){if(walk&&g.station){if($('modal').hidden)stepStation(dt);drawStation()}return}
     if($('modal').hidden)step(dt);draw()}
   return{start,dock,undock,comms,beginEnc,pause,toast(s){if(g)toast(s)},setWalk(v){walk=v;show()},repaint(){if(g)refit()},inp,step:dt=>g&&step(dt),get g(){return g},get docked(){return docked},
@@ -1015,6 +1076,7 @@ const A={
   room(r){room=r;sel=null;render()},
   laylow(){if(S.credits<40||S.laylow)return;S.credits-=40;S.sus=clamp(S.sus-12,0,100);S.laylow=true;note('You lay low in your quarters. Suspicion falls.');save();render()},
   close(){closeModal();if(Game.docked)render()},
+  sound(){Snd.toggle();const b=document.querySelector('[data-a="sound"]');if(b)b.textContent='Sound: '+(Snd.on?'on':'off')},
   reset(){S=fresh();refresh();save();closeModal();Game.start()},
   askReset(){modal(`<h2>Start over?</h2><p>This erases your current career.</p><button class="btn dng" data-a="reset">Erase and begin again</button><button class="btn" data-a="close">Keep playing</button>`)},
   launch(){Game.undock()},
