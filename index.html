@@ -164,6 +164,10 @@ const OBJ={skirmish:'Destroy every hostile ship',duel:'Break the enemy warship',
 const KIND={skirmish:'Battle',duel:'Duel',escort:'Escort run',collect:'Rescue flight'};
 
 /* Orders arrive over comms in flight. rw: c/r are multiples of the standard reward at your rank; e = Ember, s = Suspicion. */
+/* story text may be a function of the save, and every resolved choice goes through fin() to record flags */
+const tx=v=>typeof v==='function'?v(S):v;
+function fin(t,r){const f=S.flags||(S.flags={});if(r){if(r.fl)Object.assign(f,r.fl);if(r.fa)for(const k in r.fa)f[k]=(f[k]||0)+r.fa[k];if(r.crew&&!S.crew.some(c=>c.name===r.crew.name))S.crew.push(Object.assign({},r.crew))}
+  if(t.story){f['d_'+t.id]=1;f.gap=0}else f.gap=(f.gap||0)+1}
 const T=[
  {id:'wager',rk:[0,0],t:'Sim Deck Wager',x:'Corvin Dray, heir to a Zenith shipping line, bets the whole mess hall that the scholarship cadet cannot beat him ship to ship.',ch:[
    {t:'Take the bet',fight:{n:'Dray\'s corvette',mod:0,kind:'duel',rw:{c:1.2,r:1.5},x:'Dray\'s ship drifts, dark. The mess hall is very quiet, then very loud.'}},
@@ -204,19 +208,19 @@ const T=[
    {t:'Restart its systems',check:{role:'engineer',mod:1},pass:{x:'The vault doors grind open on racks of sealed components.',rw:{c:2.6,r:.5}},fail:{x:'The reactor will not catch. You strip what you can carry.',rw:{c:.4}}},
    {t:'Cut in with a boarding party',check:{role:'marine',mod:0},pass:{x:'Your marines burn through to the armoury and haul it out crate by crate.',rw:{c:2,r:.8}},fail:{x:'Automated defences still work. Your marines pull back.',rw:{c:.2}}}]},
  {id:'cell',rk:[2,5],t:'A Flame on the Pipe',x:'A coded burst on a miners\' band: a small flame glyph and a berth number. The Ember cells want weapons.',ch:[
-   {t:'Divert a shipment to them',cost:1,out:{x:'A crate goes missing between two manifests. Below, they start saying your name.',rw:{c:-1,e:20,s:8}}},
+   {t:'Divert a shipment to them',cost:1,out:{x:'A crate goes missing between two manifests. Below, they start saying your name.',rw:{c:-1,e:20,s:8},fl:{cell:'armed'}}},
    {t:'Wipe the message',out:{x:'You were never hailed.',rw:{}}},
-   {t:'Forward it to the Inquisitors',out:{x:'The berth is raided at dawn. You are commended.',rw:{r:2,e:-25,s:-10}}}]},
+   {t:'Forward it to the Inquisitors',out:{x:'The berth is raided at dawn. You are commended.',rw:{r:2,e:-25,s:-10},fl:{cell:'informed'}}}]},
  {id:'audit',rk:[1,5],cond:s=>s.sus>=40,t:'The Inquisitor\'s Audit',x:'An Inquisitor in grey has asked for your logs, your crew manifest, and an hour of your time.',ch:[
    {t:'Make a gift to her office',cost:1.5,out:{x:'She finds everything in order.',rw:{c:-1.5,s:-22}}},
    {t:'Scrub the logs first',check:{role:'engineer',mod:1},pass:{x:'The logs are spotless. She is almost disappointed.',rw:{s:-28}},fail:{x:'She finds the edit marks.',rw:{s:12}}},
    {t:'Sit through it',out:{x:'A long hour. She leaves with nothing certain.',rw:{s:-6,r:-.3}}}]},
  {id:'stowaway',rk:[0,1],t:'The Stowaway',x:'A girl, no older than twelve, has been living in the cargo hold for a week, eating ration paste and reading your flight manuals by torchlight. The manifest says the hold is empty.',ch:[
-   {t:'Turn her in',out:{x:'The stewards take her below. Your record gains a note for vigilance.',rw:{r:1.2,e:-8}}},
-   {t:'Look the other way',out:{x:'You weld the crate shut from the outside and say nothing. That night someone scratches a small flame onto a pipe near your bunk.',rw:{e:8,s:4}}},
-   {t:'Put her to work',out:{x:'She sweeps the hangar and learns the ship faster than your ensigns. The crew starts calling her the little shadow.',rw:{e:12,s:6,r:.4}}}]},
+   {t:'Turn her in',out:{x:'The stewards take her below. Your record gains a note for vigilance.',rw:{r:1.2,e:-8},fl:{stow:'turned'}}},
+   {t:'Look the other way',out:{x:'You weld the crate shut from the outside and say nothing. That night someone scratches a small flame onto a pipe near your bunk.',rw:{e:8,s:4},fl:{stow:'hid'}}},
+   {t:'Put her to work',out:{x:'She sweeps the hangar and learns the ship faster than your ensigns. The crew starts calling her the little shadow.',rw:{e:12,s:6,r:.4},fl:{stow:'work'}}}]},
  {id:'honor',rk:[1,3],t:'A Duel of Honor',x:'Lieutenant Corvin Dray has decided you insulted his house at the officers\' mess. He wants satisfaction, ship to ship, with the whole wardroom watching.',ch:[
-   {t:'Give him his duel',fight:{n:'Dray\'s corvette',mod:0,kind:'duel',rw:{c:1.4,r:1.6},x:'Dray\'s ship drifts, dark. The wardroom is very quiet, then very loud.'}},
+   {t:'Give him his duel',fight:{n:'Dray\'s corvette',mod:0,kind:'duel',rw:{c:1.4,r:1.6},x:'Dray\'s ship drifts, dark. The wardroom is very quiet, then very loud.',fa:{cv:-1}}},
    {t:'Apologize and walk away',out:{x:'You apologize for a slight you did not commit. Dray tells the story at every table in the sector.',rw:{r:-.4}}},
    {t:'Have a marine answer for you',check:{role:'marine',mod:0},pass:{x:'Your marine takes the duel in your name and wins it clean. Dray cannot complain — the forms were followed.',rw:{r:1.2,c:.5}},fail:{x:'Your marine loses badly. Dray accepts your apology with a smile that is worse than the duel.',rw:{r:-.2}}}]},
  {id:'sealedmine',rk:[2,4],t:'The Sealed Mine',x:'Deepwell Mine has been sealed from above. The overseers call it a cave-in. The miners\' band calls it a punishment, and says two hundred Cinders are still below.',ch:[
@@ -226,7 +230,7 @@ const T=[
  {id:'ghostsignal',rk:[1,4],t:'The Ghost Signal',x:'A repeating signal is coming from the wreck belt: three tones, a pause, three tones. The registry says the ship that sent it has been dead for a century.',ch:[
    {t:'Fly in and investigate',fight:{n:'Wreck belt ambush',mod:0,kind:'skirmish',rw:{c:1.2,r:1},x:'Raiders were using the old signal as bait. You spring the trap and take the wreck\'s vault for your trouble.'}},
    {t:'Log it and move on',out:{x:'You log the signal and fly on. It follows you on the band for an hour, then stops.',rw:{r:.2}}},
-   {t:'Answer it',out:{x:'You answer the three tones with three of your own. The signal stops. An hour later a tight-beam message arrives: a set of coordinates, and a single word — thanks.',rw:{e:10,s:6}}}]},
+   {t:'Answer it',out:{x:'You answer the three tones with three of your own. The signal stops. An hour later a tight-beam message arrives: a set of coordinates, and a single word — thanks.',rw:{e:10,s:6},fl:{ghost:'answered'}}}]},
  {id:'books',rk:[2,5],t:'The Quartermaster\'s Books',x:'The quartermaster\'s books do not add up. Rations, med-gel and spare parts are walking out of the stores, and the manifests are too clean to be honest.',ch:[
    {t:'Expose him',out:{x:'You lay the books before the board. He is dismissed in disgrace, and the officers who liked him do not forget your name.',rw:{r:1.4,s:4}}},
    {t:'Take a cut',out:{x:'A share of the skim finds its way to your own stores. The quartermaster smiles at you now, like a man with a secret to keep.',rw:{c:1.2,s:8}}},
@@ -248,9 +252,56 @@ const T=[
    {t:'Warn him first',check:{role:'engineer',mod:0},pass:{x:'You scrub the trail before the Inquisitor moves. He owes you his life, and he knows it.',rw:{e:12,s:6}},fail:{x:'Your warning comes too late, and the edit marks point back at you.',rw:{s:10}}},
    {t:'Say you know nothing',out:{x:'You say you know nothing. The Inquisitor watches you a moment longer than is comfortable.',rw:{}}}]},
  {id:'saint',rk:[2,5],t:'The Ember Saint',x:'A Cinder preacher in the deeps is drawing crowds with a flame glyph. Strike command wants him silenced.',ch:[
-   {t:'Arrest him',out:{x:'You take him in chains. The crowds scatter, and the deeps go quiet.',rw:{r:1.4,e:-12}}},
-   {t:'Let him preach and walk away',out:{x:'You let him preach. By morning the flame glyph is on a dozen more pipes.',rw:{e:14,s:10}}},
-   {t:'Send marines to take him alive',check:{role:'marine',mod:0},pass:{x:'Your marines take him alive, without a shot. Strike command is pleased, and the deeps remember the restraint.',rw:{r:1.2,e:8}},fail:{x:'The boarding goes badly. He slips away in the confusion, and strike command takes the matter out of your hands.',rw:{r:.2}}}]}];
+   {t:'Arrest him',out:{x:'You take him in chains. The crowds scatter, and the deeps go quiet.',rw:{r:1.4,e:-12},fl:{saint:'chains'}}},
+   {t:'Let him preach and walk away',out:{x:'You let him preach. By morning the flame glyph is on a dozen more pipes.',rw:{e:14,s:10},fl:{saint:'free'}}},
+   {t:'Send marines to take him alive',check:{role:'marine',mod:0},pass:{x:'Your marines take him alive, without a shot. Strike command is pleased, and the deeps remember the restraint.',rw:{r:1.2,e:8},fl:{saint:'alive'}},fail:{x:'The boarding goes badly. He slips away in the confusion, and strike command takes the matter out of your hands.',rw:{r:.2},fl:{saint:'free'}}}]},
+  /* ---- The Vael arc: connected story orders. story:1 orders are offered ahead of the random pool, never twice, and not back to back.
+     Choices write flags (fl: set, fa: add); crew: adds a crew member. Flags live in S.flags. ---- */
+  {id:'wall',story:1,rk:[0,5],cond:s=>s.tut,t:`The Memorial Wall`,x:`The College keeps its dead on a wall of black glass in the cloister, one name to a pane. You stop at the one you have been answering to for two years: SOREN VAEL, third ring, lost in a sim deck accident. Corvin Dray is already standing there. He does not turn around. "He hated this wall," he says. "He said it was where the Zenith kept the people it was embarrassed about."`,ch:[
+   {t:`Stand with him in silence`,out:{x:`Neither of you speaks for a long time. When Corvin leaves he touches the glass beside the name, and does not look at you. It is not friendship. It might be a truce.`,rw:{r:.2},fl:{wall:'stood'},fa:{cv:1}}},
+   {t:`Tell him Soren spoke of him often`,out:{x:`Corvin finally looks at you. "Soren never spoke of anyone," he says. "Not even me." He leaves quickly. You have just told your first lie to someone who knew the real boy.`,rw:{s:6},fl:{wall:'lied'},fa:{cv:-1}}},
+   {t:`Leave before he sees your face`,out:{x:`You walk away with the name in your mouth like a stone. Behind you Corvin says, to no one, "That is not how he walked."`,rw:{s:3},fl:{wall:'fled'}}}]},
+  {id:'locker',story:1,rk:[0,5],cond:s=>s.flags.d_wall,t:`Locker Thirty-One`,x:s=>`Preceptor Aldane keeps you after the lecture band goes quiet and puts a brass key on the desk. "The dead wing. Locker thirty-one. Soren asked me, the week before he died, to give it to whoever wore his name next. I thought he was being morbid. Then you arrived, ${RANKS[s.rank].n}, with his name and none of his habits, and I stopped thinking he was morbid." He does not ask who you are. That is the most frightening thing he says.`,ch:[
+   {t:`Open it alone, after lights out`,out:{x:s=>`A ledger chip and a note in a careful Zenith hand: "If you are reading this, you are not me. Good. Take these up the ladder. Nobody below the Zenith stratum has ever held a fleet; somebody has to. Every quota the Board calls a shortfall is a number somebody chose." The chip is full of dates, tonnages and signatures. At the bottom is a call sign: three tones, a pause, three tones.${s.flags.ghost==='answered'?' You know that sequence. You answered it once, in the wreck belt.':''}`,rw:{e:10,s:4},fl:{ledger:1}}},
+   {t:`Open it with Aldane watching`,out:{x:`Aldane reads the note over your shoulder and goes the colour of old paper. "He was right," he says. "I will keep it where it cannot be found, and you will know where." The chip goes into the Preceptor's own safe.`,rw:{r:.3,s:-2,e:4},fl:{ledger:'aldane'}}},
+   {t:`Drop the key down a waste chute`,out:{x:`You do not want to know. A man who does not know what a dead boy left cannot be asked about it. Aldane sees you without the key at the next lecture and says nothing at all.`,rw:{s:-4,e:-6},fl:{ledger:0}}}]},
+  {id:'corvin_ring',story:1,rk:[1,5],cond:s=>s.flags.d_locker,t:`Dray Comes Aboard`,x:`Lieutenant Dray arrives at your hatch after the officers' mess, sober and furious, and shuts the door behind him. "I sat beside Soren Vael for six years," he says. "He could not fly a straight line in the sim. He counted every step. You fly like someone who learned in a pit, and you walk like someone who has never been hit by a guard. Tell me I am wrong." You can hear his hand on the hatch seal.`,ch:[
+   {t:`Tell him the truth`,out:{x:`He sits down on your bunk as if his legs had gone. "Then who killed him?" is all he says. "Somebody did. I have been saying it for two years and they have called it grief." You have a second pair of eyes in the Zenith stratum, and a second pair of hands at your throat.`,rw:{e:8,s:10},fa:{cv:2},fl:{cvKnows:1}}},
+   {t:`Deny it coldly`,out:{x:`"Then I am a fool," Corvin says, and means it for exactly as long as it takes him to reach the door. "A fool who writes things down."`,rw:{s:5},fa:{cv:-1}}},
+   {t:`Remind him what slander costs a Dray`,out:{x:`Corvin goes white, then very still. "Remember that I was the one who asked," he says. You have made an enemy who is not stupid, and a Zenith one besides.`,rw:{r:.4,s:-4},fa:{cv:-3}}}]},
+  {id:'shadow',story:1,rk:[2,5],cond:s=>s.flags.stow==='hid'||s.flags.stow==='work',t:`The Little Shadow`,x:`She is fifteen now, in a courier's grey with a flame glyph stitched inside the collar, and she walks onto your hangar deck as if she owns it. "I kept your secret for three years," says the girl you hid in the cargo hold. "Now somebody wants to keep mine." She slides a coded band across the console. In the deeps they have a name for you. They are calling you the Cinderborn.`,ch:[
+   {t:`Ask what the deeps want`,out:{x:`"A fleet," she says. "And someone who remembers the number of every berth in Deepwell." She leaves a map of the lift shafts on your console, and a way to reach her.`,rw:{e:12,s:6},fl:{cells:'asked'}}},
+   {t:`Tell her to stay away from your ship`,out:{x:`She nods as if you have confirmed something. "Then I will be the one who stays away," she says. She is gone before the hatch cycles.`,rw:{e:-8},fl:{cells:'cold'}}},
+   {t:`Give her a berth and a false name`,cost:1,out:{x:`"Ysolde Ashdown," says the manifest. She learns the ship faster than your ensigns, again, and on the second night asks which bunk was Soren's.`,rw:{c:-1,e:15,s:8},fl:{cells:'sheltered'}}}]},
+  {id:'grey',story:1,rk:[2,5],cond:s=>s.flags.d_locker&&(s.flags.d_corvin_ring||s.sus>=30),t:`The Grey Hour`,x:s=>`The Inquisitor in grey does not audit you this time. She sits in your wardroom and pours her own tea. "Inquisitor Thessaly," she says, as though you might have forgotten. "Soren Vael's skull was cracked before he fell, ${RANKS[s.rank].n}. Sim decks do not crack skulls. I have spent two years asking for a name and been given a different Board member every time. You were on that deck the week after. Tell me what you know, or tell me a better lie than the last one."`,ch:[
+   {t:`Tell her what you know`,out:{x:`She listens without writing anything down. "The Dray Lines tithe," she says at last. "Every shortfall in the deeps rides a Dray hull and I could never prove it. Bring me a manifest with their seal and I will bring the rest." She says she did not hear that you are a Cinder. She heard that you know the tithe is cooked. She leaves her tea unfinished, which you take as trust.`,rw:{r:.6,s:-6,e:5},fl:{thess:'trust'}}},
+   {t:`Give her half of it: the boy was murdered`,out:{x:`"The Dray Lines tithe," she says, "if I were looking, which I am not." She keeps your file open on the table between you for a long moment before she closes it. It will not stay closed.`,rw:{r:.3,s:4},fl:{thess:'wary'}}},
+   {t:`Lie well`,check:{role:'gunner',mod:2},pass:{x:`She leaves with nothing, and the sense that she has been outplayed by someone who does not know how to play. You will not get that mercy twice.`,rw:{s:-10},fl:{thess:'none'}},fail:{x:s=>`She smiles. "Soren Vael could not lie to save his life, ${RANKS[s.rank].n}. It was his only vice." She has your file open now, and it will not close.`,rw:{s:14},fl:{thess:'hunting'}}}]},
+  {id:'manifests',story:1,rk:[2,5],cond:s=>s.flags.d_grey,t:`The Dray Convoy`,x:`A Dray Lines tithe convoy is running the Deepwell lane under escort tomorrow. Everything you have learned, from the ledger to the whispers on the miners' band, says its holds are lighter than its manifests. The lane is public. The convoy's captain will not enjoy being boarded for a cargo check by an officer with no authority to make one.`,ch:[
+   {t:`Cut the convoy off and take the manifests`,fight:{n:`Dray convoy escort`,mod:0,kind:'skirmish',rw:{c:1.2,r:1.2,e:10,s:8},x:`The escort breaks. In the lead hauler's vault you find the real manifests, sealed with the Dray crest and a Board stamp. Every number in Soren's ledger has a twin here. Someone on the Board is selling the deeps its own hunger.`,fl:{proof:1}}},
+   {t:`Warn the miners and stay clear`,out:{x:`The convoy slips through and so does the deeps' warning. Nothing happened, and you will not be able to prove that it did.`,rw:{e:12,s:2},fl:{proof:0}}},
+   {t:`Hand the route to Inquisitor Thessaly`,out:{x:`She takes the route and the credit. Two days later the lane is full of grey cutters and the Dray captain is in chains. Whatever Thessaly finds, she does not share it with you.`,rw:{r:.8,e:-6,s:-6},fl:{proof:'thess'}}}]},
+  {id:'saint_word',story:1,rk:[3,5],cond:s=>s.flags.saint&&s.flags.saint!=='lost',t:`The Saint's Word`,x:s=>s.flags.saint==='chains'?`The Ember Saint is due to hang in the Concord yards at dawn. He has asked for you by a name nobody in the deeps should know. In the cell he is smaller than his sermons. "The Zenith boy came to Deepwell the winter before he died," he says. "He wept in the lift shaft and asked what the miners ate. Nobody had asked them that before. I have waited for him to come back. You are not him. But you came."`:`The Ember Saint comes aboard under a miner's hood. "I know whose name you wear," he says quietly. "A Zenith boy came to Deepwell the winter before he died. He wept in the lift shaft and asked what the miners ate. Nobody had asked them that before. The deeps will rise if a Cinder holds a fleet. You hold one."`,ch:[
+   {t:`Promise the deeps a fleet when the time comes`,out:{x:`"Then I can die content," the Saint says, or "then I can live," depending on who you ask afterwards. In the deeps, the glyph appears on every pipe by morning.`,rw:{e:20,s:8},fl:{cellsPledged:1}}},
+   {t:`Tell him you are not ready`,out:{x:`He nods. "He wasn't either," he says. "He went anyway."`,rw:{e:4}}},
+   {t:`Warn him to leave Emberfall`,out:{x:`"Where would I go?" the Saint asks, and does not wait for an answer. You have bought him a week and cost yourself a little of the deeps' trust.`,rw:{e:-4,s:-4},fl:{cellsPledged:0}}}]},
+  {id:'corvin_ally',story:1,rk:[3,5],cond:s=>s.flags.d_corvin_ring&&s.flags.d_manifests&&!s.flags.d_corvin_foe&&(s.flags.cv||0)>=0,t:`Dray's Own Evidence`,x:`Corvin Dray requests an interview in the cargo bay, away from every recorder. He has stopped wearing his house crest. "I read my father's private minutes," he says. "Soren was not killed by a stranger. My father signed the order. He called it 'managing a leak'. I want that signature, Admiral or no Admiral, and I do not care what happens to Dray Lines after." He holds out his hand and then, awkwardly, his sidearm, butt first.`,ch:[
+   {t:`Take him aboard as your pilot`,out:{x:`Corvin Dray signs your crew roll under his own name. The mess goes quiet, then someone sets a seat beside him. He says nothing about Soren for a week, then everything in one night.`,rw:{r:.4,e:10,s:8},fl:{cvAlly:1},crew:{name:'Corvin Dray',caste:'Zenith',role:'pilot',lvl:3,xp:0,loyal:true}}},
+   {t:`Take his evidence and send him home`,out:{x:`"I will be at the Throne when you arrive," he says. "Do not make me wait too long." He is gone before you can answer.`,rw:{r:.4,e:6},fl:{cvAlly:2}}},
+   {t:`Refuse him: a Dray is a Dray`,out:{x:`Corvin lowers the sidearm slowly. "Soren would have been ashamed of you," he says, which is cruellest because it might be true.`,rw:{e:-10,s:-4},fl:{cvAlly:-2}}}]},
+  {id:'corvin_foe',story:1,rk:[3,5],cond:s=>s.flags.d_corvin_ring&&!s.flags.d_corvin_ally&&(s.flags.cv||0)<0,t:`Dray's Revenge`,x:`Corvin Dray has been given a corvette by his father's friends on the Board and a patrol that happens to run through your lane. "Soren's name was a gift," he signals on the open band, "and you have been wearing it like a mask. Take it off, or I will take it off for you."`,ch:[
+   {t:`Give him his duel`,fight:{n:`Dray's corvette`,mod:1,kind:'duel',rw:{c:1.4,r:2},x:`Dray's ship goes dark. In the wreckage you find his father's seal and a message he never sent: "I was right about him. I could not prove it. Whoever he is, he is not Soren."`,fl:{cvAlly:-1}}},
+   {t:`Send him one line: the killer is your father`,check:{role:'pilot',mod:1},pass:{x:`Corvin does not answer for three days. On the fourth his ship comes alongside and he boards without a weapon. "Show me," he says.`,rw:{e:8,s:8},fl:{cvAlly:2},fa:{cv:4}},fail:{x:`He answers with a torpedo. You will not forget how far he was willing to go to avoid being told.`,rw:{s:6},fl:{cvAlly:-2}}},
+   {t:`Refuse the duel and take the insult`,out:{x:`The whole sector hears it. Corvin Dray has called you a coward on the open band, and you let him.`,rw:{r:-.4,s:4},fl:{cvAlly:-2}}}]},
+  {id:'aldane_taken',story:1,rk:[4,5],cond:s=>s.flags.d_grey&&s.flags.d_manifests,t:`The Preceptor Is Taken`,x:`A burst from the College goes out on the Concord band, unencrypted, for everyone to hear: Preceptor Aldane has been placed in Inquisitor custody for "irregularities in the admission of cadets". Grey cutters are taking him to the black cells under the Throne. Aldane forged a name for a Cinder and hid the evidence of a murder. He is sixty and has never fought a day in his life.`,ch:[
+   {t:`Break him out`,fight:{n:`Inquisitor cutters`,mod:1,kind:'skirmish',rw:{c:1,r:1.5,e:10,s:12},x:`The cutters break and Aldane is pulled aboard in a blanket, grey and furious. "You flew like you were angry," he says. "Good. Do not fly like that at the Throne."`,fl:{aldane:'free'}}},
+   {t:`Offer the Board a trade: your silence for his life`,out:{x:`You send the Board what it wants most: a Cinder who will stay quiet. Aldane is released at the College gate with a pension and a muzzle. The chip you carried is gone, and so is your leverage.`,rw:{s:-10,e:-8},fl:{aldane:'saved',ledger:0,proof:0}}},
+   {t:`Let the Board have him`,out:{x:`Aldane's last transmission is brief: "Do not come." You do not. Three weeks later the College flies its flag at half-mast and the gazette calls it a heart condition.`,rw:{e:15,s:-6,r:-.3},fl:{aldane:'dead'}}}]},
+  {id:'night_before',story:1,rk:[5,5],cond:s=>s.flags.d_aldane_taken,t:`The Night Before the Throne`,x:s=>`The flagship is quiet. In the mess the oldest hand in your crew, an engineer who has been with you since the first day, puts down her cup. "Whatever you are going to do tomorrow, Admiral," she says, "I would like to hear it from you."${s.flags.ghost==='answered'?' Then, almost to herself, she taps three tones and a pause and three tones on the table. "Old miners\' call," she says. "Means: I am still here."':''}`,ch:[
+   {t:`Tell them who you are`,out:{x:`A Cinder, from Emberfall, in a dead boy's coat. Nobody laughs. The engineer takes off her cap and sets it on the table and, one by one, so do the rest. Whatever tomorrow costs, you will not be carrying it alone.`,rw:{e:15,s:12},fl:{crewKnows:1}}},
+   {t:`Tell them only the plan`,out:{x:`They nod, and they will fly. It is enough. It has always been enough. You wonder whether it will be tomorrow.`,rw:{r:.4},fl:{crewKnows:0}}},
+   {t:`Spend the night with Soren's note`,out:{x:`You read it again, and again. "Somebody has to." You never found out whether he meant you, or only that you happened to be standing there when his name came free.`,rw:{e:6},fl:{noteRead:1}}}]}
+];
 
 /* ============ STATE ============ */
 const R=(a,b)=>a+Math.random()*(b-a),RI=(a,b)=>Math.floor(R(a,b+1)),pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -261,7 +312,7 @@ function fresh(){
   return{v:2,pay:0,credits:160,renown:0,rank:0,ember:0,sus:0,hull:'corvette',ship:'fighter',rosterNote:false,scoutNote:false,haulerNote:false,gunshipNote:false,bomberNote:false,tut:false,laylow:false,items:{drone:0,cell:0,cap:0},
     slots:[{id:'reactor',mk:1},{id:'rail',mk:1},{id:'armor',mk:1},null,null,null],
     crew:[{name:'Tavi Lowe',caste:'Cinder',role:'engineer',lvl:1,xp:0}],
-    pool:[],docs:[],own:NODES.map(n=>n.o),ended:null,log:['You arrive at the Meridian War College under a dead boy\'s name.']};
+    pool:[],docs:[],own:NODES.map(n=>n.o),ended:null,flags:{},log:['You arrive at the Meridian War College under a dead boy\'s name.']};
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function load(){try{const j=JSON.parse(localStorage.getItem(KEY));if(j&&j.v===2)return j}catch(e){}return null}
@@ -381,6 +432,7 @@ const Snd=(()=>{
   return{tick,play,count,get state(){return ac?ac.state:'none'},get on(){return on},toggle(){on=!on;try{localStorage.setItem('cinderborn.snd',on?'1':'0')}catch(e){}boot();if(out)out.gain.setTargetAtTime(on?.9:0,ac.currentTime,.05);return on}}})();
 /* ============ SHIP TALK: lines for the people aboard the flagship. Each tap gives the next line; some lines only appear in certain states. ============ */
 function talkLines(n){const rk=RANKS[S.rank].n,L=[],c=n.c;
+  if(c&&c.name==='Corvin Dray')return['Soren counted his steps. I have caught myself doing it.','My father signs everything in green ink. I could pick his hand out in the dark.','When this is over, somebody should read his name aloud at the wall. Properly.',S.sus>=50?'The proctors asked me about you. I told them you are the worst pilot I have ever met.':'You still fly like a Cinder, '+rk+'. Do not ever stop.'];
   if(c){const first=c.name.split(' ')[0];L.push(ROLES[c.role]+' '+first+', level '+c.lvl+'. Ready when you are.');
     L.push({gunner:'Guns are dialled in. Give me something to shoot at.',pilot:'She turns sweeter with me at the helm. You will feel it in the dash.',engineer:'Hull is patched. Try not to undo all of it at once.',marine:'Kit is stowed. Find us a crippled warship and get us close.'}[c.role]);
     if(c.caste==='Cinder')L.push('Emberfall born, same as half the deck crews. Nobody up here asks. Good hunting, '+rk+'.');else L.push('My family expected a posting on the Throne. I got you instead. It is growing on me.');
@@ -518,17 +570,17 @@ const Game=(()=>{
     if(win){banner('ORDER COMPLETE',2.2);en.ctx.win(xpAll())}
     else{S.renown=Math.max(0,S.renown-3);banner('ORDER FAILED',2.2);if(en.ctx.lose)en.ctx.lose();else report(en.spec.n+' failed','The order is struck from your record.','−3 renown')}}
   function takeNode(i){const n=NODES[i],was=S.own[i];scatter('n'+i,true);S.own[i]='you';const x=xpAll();banner(n.n.toUpperCase()+' TAKEN',3);
-    if(i===10){S.renown+=100;save();return modal(`<p class="lbl">The Meridian Throne has fallen</p><h2>The sector is yours</h2><p>The flagship burns above the Throne. Every house in the Concord is waiting to hear what the new master of the sector will say. In the deeps, they are waiting too.</p><button class="btn pri" data-a="ending:crown">Take the crown<small>Rule the Concord as the Zenith always have.</small></button><button class="btn" data-a="ending:break" ${S.ember>=60?'':'disabled'}>Break the strata<small>${S.ember>=60?'Tell them who you are, and open the deeps.':'Needs 60 Ember. The deeps do not know your name well enough to rise.'}</small></button>`)}
+    if(i===10){S.renown+=100;save();return modal(`<p class="lbl">The Meridian Throne has fallen</p><h2>The sector is yours</h2><p>The flagship burns above the Throne. Every house in the Concord is waiting to hear what the new master of the sector will say. In the deeps, they are waiting too.</p>${finaleLines().map(l=>`<p>${l}</p>`).join('')}<button class="btn pri" data-a="ending:crown">Take the crown<small>Rule the Concord as the Zenith always have.</small></button><button class="btn" data-a="ending:break" ${S.ember>=60?'':'disabled'}>Break the strata<small>${S.ember>=60?'Tell them who you are, and open the deeps.':'Needs 60 Ember. The deeps do not know your name well enough to rise.'}</small></button>`)}
     report(n.n+' taken',HOUSES[was].n+' strikes its banner. You can dock here now, and the system pays you '+n.inc+' credits each payout.',x+applyRw({c:1,r:1.4},true))}
-  function offer(){const ok=T.filter(t=>S.rank>=t.rk[0]&&S.rank<=t.rk[1]&&(!t.cond||t.cond(S)));const au=ok.find(t=>t.id==='audit');
-    const t=au&&Math.random()<.6?au:pick(ok.filter(q=>q.id!=='audit'&&q.id!==g.lastOffer));g.lastOffer=t.id;
-    modal(`<p class="lbl">Incoming orders</p><h2>${t.t}</h2><p>${t.x}</p><div class="col">${t.ch.map((c,i)=>{let hint='',dis=false;
+    function offer(){const ok=T.filter(t=>S.rank>=t.rk[0]&&S.rank<=t.rk[1]&&(!t.cond||t.cond(S))&&!(t.story&&S.flags['d_'+t.id]));const au=ok.find(t=>t.id==='audit');const sb=ok.find(t=>t.story&&(S.flags.gap==null||S.flags.gap>=2));
+    const t=sb&&Math.random()<.65?sb:au&&Math.random()<.6?au:pick(ok.filter(q=>!q.story&&q.id!=='audit'&&q.id!==g.lastOffer));g.lastOffer=t.id;
+    modal(`<p class="lbl">Incoming orders</p><h2>${t.t}</h2><p>${tx(t.x)}</p><div class="col">${t.ch.map((c,i)=>{let hint='',dis=false;
       if(c.fight)hint=KIND[c.fight.kind||'skirmish']+' · a waypoint is set and you fly it';
       if(c.check)hint=ROLES[c.check.role]+' check · '+checkOdds(c.check)+'% chance';
       if(c.cost){const v=Math.round(c.cost*stdC());hint='Costs '+v+' credits';dis=S.credits<v}
       return`<button class="btn" data-a="order:${t.id}:${i}" ${dis?'disabled':''}>${c.t}${hint?`<small>${hint}</small>`:''}</button>`}).join('')}</div><button class="btn" data-a="later">Not now</button>`)}
   function payout(){S.pay++;const inc=income();S.credits+=inc;toast('Stipend and holdings  +'+inc+' credits');
-    const z=S.crew.filter(c=>c.caste==='Zenith').length;
+    const z=S.crew.filter(c=>c.caste==='Zenith'&&!c.loyal).length;
     if(S.ember>=30&&z){S.sus=clamp(S.sus+z,0,100);toast('Your Zenith crew notice things  +'+z+' Suspicion')}else if(S.sus>0)S.sus--;
     if(S.sus>=100){save();return modal(`<h2>Exposed</h2><p>The Inquisitor lays your true birth record on the table. A Cinder, wearing a dead Zenith's name, commanding a Concord warship. They do not hold a trial.</p><p class="dim">You reached ${RANKS[S.rank].n} and held ${held()} systems.</p><button class="btn pri" data-a="reset">Begin again</button>`)}
     if(S.sus>=75)toast('The Inquisitors are close. Get Suspicion down');
@@ -1164,12 +1216,12 @@ const A={
      lose:()=>report('Trial failed','The board declines to promote you. Dock and stand again when you are ready.')},Game.trialSite())},
   order(id,ci){const t=T.find(t=>t.id===id),c=t.ch[+ci];
     if(c.cost&&S.credits<Math.round(c.cost*stdC()))return;closeModal();
-    if(c.out)return report(t.t,c.out.x,applyRw(c.out.rw));
-    if(c.check){const pass=Math.random()*100<checkOdds(c.check),r=pass?c.pass:c.fail;return report(t.t+(pass?'':' (failed)'),r.x,applyRw(r.rw))}
-    Game.beginEnc(mkEnemy(Math.max(0,S.rank+c.fight.mod),c.fight.n,c.fight.kind),{win:x=>report(t.t,c.fight.x,x+applyRw(c.fight.rw,true))});
+    if(c.out){fin(t,c.out);return report(t.t,tx(c.out.x),applyRw(c.out.rw))}
+    if(c.check){const pass=Math.random()*100<checkOdds(c.check),r=pass?c.pass:c.fail;fin(t,r);return report(t.t+(pass?'':' (failed)'),tx(r.x),applyRw(r.rw))}
+    Game.beginEnc(mkEnemy(Math.max(0,S.rank+c.fight.mod),c.fight.n,c.fight.kind),{win:x=>{fin(t,c.fight);report(t.t,tx(c.fight.x),x+applyRw(c.fight.rw,true))}});
   },
   node(i){sel=+i;render()},
-  ending(k){S.ended=k;save();const txt=k==='crown'?'You take the Throne under a name that was never yours. The quotas continue. The deeps go quiet, and you learn to stop listening for them.':'You broadcast your birth record on every band: a Cinder, from Emberfall. Then you open the lift shafts. It is the last order you give as an admiral of the Concord and the first of something that has no name yet.';
+  ending(k){S.ended=k;save();const f=S.flags||{},proof=f.ledger===1||f.ledger==='aldane'||f.proof===1;const txt=k==='crown'?'You take the Throne under a name that was never yours. The quotas continue. The deeps go quiet, and you learn to stop listening for them.'+(proof?' The ledger goes into a drawer and the manifests into a furnace, one signature at a time. Nobody ever asks what happened to Soren Vael.':''):'You broadcast your birth record on every band: a Cinder, from Emberfall. Then you open the lift shafts. It is the last order you give as an admiral of the Concord and the first of something that has no name yet.'+(proof?' Behind your own record you broadcast Soren Vael\'s ledger with the Board\'s stamps beside it. Every shortfall in the sector now has a date and a signature, and for the first time the name on the College wall is read aloud for the right reason.':' There is no proof of what was done to Soren Vael, only your word. It turns out the deeps have been waiting a long time for someone\'s word.');
     note(k==='crown'?'You took the crown.':'You broke the strata.');
     modal(`<p class="lbl">${k==='crown'?'Ending: The Crown':'Ending: The Open Deeps'}</p><h2>${k==='crown'?'Long may you reign':'Cinderborn'}</h2><p>${txt}</p><p class="dim">You hold ${held()} of ${NODES.length} systems. You can keep flying to take the rest.</p><button class="btn pri" data-a="close">Continue</button>`)}
 };
@@ -1224,11 +1276,35 @@ function vMarket(){const it=S.items||{drone:0,cell:0,cap:0};
 function vBarracks(){return`<div class="card story"><p class="lbl">Barracks</p><p>Bunks, kit bags and a duty board. New faces arrive every time you dock. Walk the barracks to sign them on — or just to see who is aboard.</p></div>
   <div class="card"><h3>Aboard (${S.crew.length})</h3><p class="dim">${S.crew.map(c=>c.name).join(' · ')||'Nobody yet.'}</p>
   <div class="row"><button class="btn pri" data-a="walk">Walk the barracks<small>Sign on new crew, see their cards</small></button></div></div>`}
+function finaleLines(){const f=S.flags||{},L=[],led=f.ledger===1||f.ledger==='aldane',pf=f.proof===1;
+    if(f.cvAlly===1)L.push(`Corvin Dray stands at your shoulder in the Throne room with his father's seal in his pocket. He says nothing. He does not have to.`);
+    else if(f.cvAlly===2)L.push(`Corvin Dray arrives an hour late in a borrowed uniform, his father's seal in his pocket, and takes the place where Soren would have stood.`);
+    else if(f.cvAlly<0)L.push(`Corvin Dray is among the Throne guard taken prisoner. He will not look at you.`);
+    if(f.aldane==='free')L.push(`Aldane watches from your gallery, thinner than you remember, still marking you in his head.`);
+    else if(f.aldane==='saved')L.push(`Aldane watches from a College window, pensioned and silent. You cannot tell whether he is proud or only alive.`);
+    else if(f.aldane==='dead')L.push(`Aldane is not here. You carry what he taught you.`);
+    if(led&&pf)L.push(`Soren's ledger is in your hand, and beside it a Dray manifest with the Board's own stamp. Every number has a twin, and every twin has a signature.`);
+    else if(led)L.push(`Soren's ledger is in your hand, but nobody has ever matched it to a seal.`);
+    else if(pf)L.push(`You hold a Dray manifest with the Board's stamp, and no ledger to read it against.`);
+    else L.push(`You have no ledger and no manifest: only your word, and your birth record.`);
+    if(f.thess==='trust'&&(pf||f.proof==='thess'))L.push(`Inquisitor Thessaly waits at the Throne's back stair, alone. She lets you pass.`);
+    if(f.cellsPledged===1)L.push(`In the deeps the flame glyph is on every pipe. They are waiting for your word.`);
+    return L}
+function vaelFile(){const f=S.flags||{};if(!f.d_wall)return'';const L=[`You wear the name of Soren Vael, third ring, “lost in a sim deck accident”. Corvin Dray was his friend.`];
+  if(f.d_locker)L.push(f.ledger===1?`Locker thirty-one held Soren's ledger: every quota called a shortfall is a number somebody chose.`:f.ledger==='aldane'?`Soren's ledger is locked in Preceptor Aldane's safe.`:`You threw away Soren's key. Whatever he left is unread.`);
+  if(f.d_grey)L.push(`Inquisitor Thessaly says Soren's skull was cracked before he fell. She points at the Dray Lines tithe.`);
+  if(f.d_manifests)L.push(f.proof===1?`You hold a Dray Lines manifest with the Board's own stamp.`:f.proof==='thess'?`Thessaly took the Dray convoy and kept what she found.`:`The Dray convoy passed untouched. You cannot prove what it carried.`);
+  if(f.d_corvin_ally)L.push(f.cvAlly>0?`Corvin Dray says his father signed Soren's death order, and he is with you.`:`Corvin Dray says his father signed Soren's death order. You turned him away.`);
+  if(f.d_corvin_foe)L.push(f.cvAlly>0?`Corvin Dray believes you now. His father signed Soren's death order.`:`Corvin Dray is your enemy and will not hear that his father killed Soren.`);
+  if(f.cellsPledged===1)L.push(`You promised the deeps a fleet.`);
+  if(f.d_aldane_taken)L.push(f.aldane==='free'?`You pulled Aldane out of Inquisitor custody.`:f.aldane==='saved'?`You bought Aldane's life with your silence.`:`Aldane died in Inquisitor custody.`);
+  return`<div class="card"><h3>The Vael file</h3><div class="col">${L.map(l=>`<p class="dim" style="font-size:.9rem">${l}</p>`).join('')}</div></div>`}
 function vBridge(){
   const st=stats(),touch=matchMedia('(pointer:coarse)').matches;
   return`<div class="card story"><p class="lbl">${RANKS[S.rank].n}'s briefing</p><p>${BRIEF[S.rank]}</p><p class="gold">${RANKS[S.rank].duty}</p>
     ${canPromote()?`<div class="row"><button class="btn pri" data-a="tab:college">Your promotion trial is ready</button></div>`:S.rank<5?`<p class="dim">Next rank: ${RANKS[S.rank+1].n} at ${RANKS[S.rank+1].need} renown. ${RANKS[S.rank+1].duty}</p>`:''}
     ${!st.ok?`<p class="bad">Your ship cannot launch. ${st.weapons.length?'It draws more power than it makes.':'It has no weapons.'} Fix it in the Shipyard.</p>`:''}</div>
+  ${vaelFile()}
   <div class="grid2">
    <div class="card"><h3>How to fly and fight</h3><button class="btn" data-a="sound">Sound: ${Snd.on?'on':'off'}</button>${touch?`<div class="keys"><b>THUMB STICK</b><span>Fly. Bottom left</span><b>GUNS</b><span>Fire by themselves at the nearest hostile in range</span><b>RIGHT THUMB</b><span>Drag to aim and fire by hand instead</span><b>DASH</b><span>Nothing can hit you mid-dash</span><b>DOCK / BOARD</b><span>Shows up beside your anchorage or a crippled warship</span><b>1 / 2 / 3</b><span>Round buttons, bottom right — use a store item</span></div>`
      :`<div class="keys"><b>W A S D</b><span>Fly</span><b>MOUSE</b><span>Aim. Hold click or Space to fire</span><b>SHIFT</b><span>Dash. Nothing can hit you mid-dash</span><b>E</b><span>Dock, or hold to board a crippled warship</span><b>1 / 2 / 3</b><span>Use a store item — repair drone, overcharge cell, shield capacitor</span><b>ESC</b><span>Pause</span></div>`}
@@ -1311,6 +1387,7 @@ loadArt();
 S=load();if(!S){S=fresh();refresh();save()}
 if(!S.ship)S.ship='fighter';
 if(!S.items)S.items={drone:0,cell:0,cap:0};
+if(!S.flags)S.flags={};
 if(!S.rosterNote&&S.renown>=30){S.rosterNote=true;note('Ensign rank releases the Interceptor — it is waiting in your hangar.');save()}
 if(!S.scoutNote&&S.renown>=80){S.scoutNote=true;note('Lieutenant rank releases the Scout — it is waiting in your hangar.');save()}
 if(!S.haulerNote&&S.renown>=170){S.haulerNote=true;note('Commander rank releases the Hauler — it is waiting in your hangar.');save()}
