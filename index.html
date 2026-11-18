@@ -447,6 +447,39 @@ function talkLines(n){const rk=RANKS[S.rank].n,L=[],c=n.c;
   else{L.push('Dash through the red line, not away from it.','Raiders hunt in packs. Kill the gunship first.','A loud run draws eyes. The bunk in the quarters is there for a reason.')}
   if(S.sus>=60)L.push('Keep your head down. The proctors were on the deck again, asking after you.');
   return L}
+/* ============ OPENING SCENE: five beats over drifting nebula, shown once at the start of a new career; replayable from the bridge ============ */
+const Intro=(()=>{let on=false,el=null,i=0,timer=null,done=null;
+  const B=[{t:`In the Emberfall deeps, the Concord counts people by the tonne.`},
+    {t:`A forged bloodline and a dead boy's name bought you a berth at the Meridian War College.`},
+    {t:`<b>SOREN VAEL</b><br><small>Third ring. Lost in a sim deck accident.</small><br><small>You have been answering to it for two years.</small>`,ship:1},
+    {t:`Nobody below the Zenith stratum has ever held a fleet.`},
+    {t:`Keep your head down. Keep the name.<br><small>Preceptor Aldane is waiting at the anchorage.</small>`,last:1}];
+  function paint(){const b=B[i],t=el.querySelector('.t'),sh=el.querySelector('.sh');t.style.opacity=0;if(sh)sh.style.opacity=b.ship?1:0;
+    setTimeout(()=>{if(!el)return;t.style.marginTop=b.ship?'30vh':'';t.innerHTML=b.t;t.style.opacity=1},380);
+    el.querySelector('.n').textContent=b.last?'TAP TO BEGIN':'TAP TO CONTINUE';el.querySelector('.d').textContent=(i+1)+' / '+B.length;
+    clearTimeout(timer);timer=setTimeout(next,b.last?60000:6200);if(b.last)Snd.play('dock')}
+  function next(){if(!on)return;if(i>=B.length-1)return end();i++;paint()}
+  function end(){if(!on)return;on=false;clearTimeout(timer);const e=el,cb=done;el=null;done=null;if(e){e.style.opacity=0;setTimeout(()=>e.remove(),700)}removeEventListener('keydown',key,true);if(cb)cb()}
+  function key(ev){if(!on)return;ev.preventDefault();ev.stopImmediatePropagation();if(ev.code==='Escape')end();else if(ev.code==='Enter'||ev.code==='Space'||ev.code==='ArrowRight')next()}
+  function start(cb){if(on)return;on=true;i=0;done=cb||null;el=document.createElement('div');el.setAttribute('role','dialog');el.setAttribute('aria-label','Opening');
+    const neb=ART_SRC&&ART_SRC.nebula,ship=ART_SRC&&ART_SRC.flagship;
+    el.innerHTML=`<style>#intro{position:fixed;inset:0;z-index:90;background:#05040a;color:#ece4d6;display:flex;align-items:center;justify-content:center;text-align:center;opacity:0;transition:opacity .7s;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;overflow:hidden;
+      padding:calc(24px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(24px + env(safe-area-inset-left,0px))}
+      #intro .bg{position:absolute;inset:-10%;background:url(${neb||''}) center/cover;opacity:.85;filter:brightness(2.6) saturate(1.35);animation:introPan 40s linear infinite alternate}
+      #intro .v{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(5,4,10,.25) 0%,rgba(5,4,10,.92) 100%)}
+      #intro .sh{position:absolute;left:50%;top:28%;width:min(86vw,520px);transform:translate(-50%,-50%);opacity:0;transition:opacity 1.4s;filter:drop-shadow(0 0 26px rgba(240,160,60,.35));animation:introDrift 9s ease-in-out infinite alternate}
+      #intro .t{position:relative;max-width:30ch;font:600 clamp(1.2rem,5.2vw,1.85rem)/1.5 Cinzel,Georgia,serif;letter-spacing:.02em;transition:opacity .9s;text-shadow:0 2px 18px #000}
+      #intro .t b{display:block;font-size:1.5em;letter-spacing:.14em;color:#f0a03c;margin-bottom:.35em}#intro .t small{display:block;font:500 .62em/1.6 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.14em;color:#b9aec4;text-transform:uppercase}
+      #intro .n{position:absolute;left:0;right:0;bottom:calc(30px + env(safe-area-inset-bottom,0px));font:600 .78rem 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.25em;color:#7a7088;animation:introBlink 2.2s ease-in-out infinite}
+      #intro .d{position:absolute;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom,0px));font:500 .68rem 'Barlow Condensed',sans-serif;letter-spacing:.2em;color:#4a4458}
+      #intro .k{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));background:none;border:1px solid #4a4458;color:#9a90a8;font:600 .75rem 'Barlow Condensed',sans-serif;letter-spacing:.2em;padding:8px 14px;cursor:pointer}
+      @keyframes introPan{from{transform:translate(-3%,-2%) scale(1.05)}to{transform:translate(3%,2%) scale(1.15)}}@keyframes introDrift{from{margin-left:-14px}to{margin-left:14px}}@keyframes introBlink{50%{opacity:.35}}
+      @media (prefers-reduced-motion:reduce){#intro .bg,#intro .sh,#intro .n{animation:none}}</style>
+      <div class="bg"></div><div class="v"></div>${ship?`<img class="sh" src="${ship}" alt="">`:''}<div class="t"></div><div class="n"></div><div class="d"></div><button class="k" type="button">SKIP</button>`;
+    el.id='intro';document.body.appendChild(el);
+    el.addEventListener('click',ev=>{if(ev.target.closest('.k'))end();else next()});addEventListener('keydown',key,true);
+    requestAnimationFrame(()=>{if(el)el.style.opacity=1});paint()}
+  return{get on(){return on},play:start,maybe(){if(on||(S.flags&&S.flags.intro)||S.tut||S.pay>0)return;start(()=>{S.flags=S.flags||{};S.flags.intro=1;save()})}}})();
 const Game=(()=>{
   let cv,cx,W=800,H=600,dpr=1,sc=1,raf=0,last=0,g=null,bound=false,docked=false,walk=false,psprite=null,lastAct=null;
   const keys={},inp={mx:0,my:0,down:false,L:null,R:null,board:false,dashQ:false,touch:false,ov:null};
@@ -483,7 +516,7 @@ const Game=(()=>{
     refit();
     if(!S.tut){for(let i=0;i<3;i++){const e=foe('f',0,h.x-150+i*150,h.y-260,'tut');e.drone=true;e.dmg=1;e.hp=e.maxHp=14;e.spd=60;g.foes.push(e)}
       comms('Preceptor Aldane','Cadet. Three target drones are loose above the anchorage. Destroy them, then dock and see to your ship.')}
-    docked=false;show();resize();last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+    docked=false;show();resize();last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);Intro.maybe();
   }
   function refit(){const st=stats(),p=g.p;g.st=st;p.maxHp=p.hp=st.hull;p.maxSh=p.sh=st.sh;p.cds=st.weapons.map((w,i)=>i*.12);p.ovT=0;p.r=10+Math.sqrt(S.slots.length)*5;
     g.thr=st.board>0?clamp(.15+st.board*.015,0,.6):0;psprite=mkPlayer()}
@@ -1177,6 +1210,7 @@ const Game=(()=>{
   }
   function loop(now){raf=requestAnimationFrame(loop);if(!g)return;const dt=Math.min(.033,(now-last)/1000);last=now;
     Snd.tick(g,docked,walk,dt);
+    if(Intro.on){last=now;return}
     if(docked){if(walk&&g.station){if($('modal').hidden)stepStation(dt);drawStation()}return}
     if($('modal').hidden)step(dt);draw()}
   return{start,dock,undock,comms,beginEnc,pause,toast(s){if(g)toast(s)},setWalk(v){walk=v;show()},repaint(){if(g)refit()},inp,step:dt=>g&&step(dt),get g(){return g},get docked(){return docked},
@@ -1191,6 +1225,7 @@ const A={
   close(){closeModal();if(Game.docked)render()},
   sound(){Snd.toggle();document.querySelectorAll('[data-a="sound"]').forEach(b=>b.textContent='Sound: '+(Snd.on?'on':'off'))},
   reset(){S=fresh();refresh();save();closeModal();Game.start()},
+  intro(){Intro.play()},
   askReset(){modal(`<h2>Start over?</h2><p>This erases your current career.</p><button class="btn dng" data-a="reset">Erase and begin again</button><button class="btn" data-a="close">Keep playing</button>`)},
   launch(){Game.undock()},
   walk(){Game.setWalk(true)},
@@ -1313,7 +1348,7 @@ function vBridge(){
   </div>
   <div class="card"><h3>Ship's log</h3><div class="col">${S.log.map(l=>`<p class="dim" style="font-size:.9rem">${l}</p>`).join('')}</div>
    <p class="dim"><b class="gold">Ember</b> is how far the deeps trust you. <b class="bad">Suspicion</b> is how close the Inquisitors are. At 100 you are exposed.</p>
-   <div class="row"><button class="btn" data-a="askReset">Start a new career</button></div></div>`;
+   <div class="row"><button class="btn" data-a="intro">Watch the opening</button><button class="btn" data-a="askReset">Start a new career</button></div></div>`;
 }
 function shipStats(st){
   const ro=ROSTER[S.ship||'fighter'],pc=(v,u)=>v>1?'+'+Math.round((v-1)*100)+'% '+u:'−'+Math.round((1-v)*100)+'% '+u,bits=[];if(ro.speed!==1)bits.push(pc(ro.speed,'speed'));if(ro.dmg!==1)bits.push(pc(ro.dmg,'guns'));if(ro.hull)bits.push(pc(ro.hull,'hull'));const fly=ro.n+(bits.length?' · '+bits.join(', '):'');
